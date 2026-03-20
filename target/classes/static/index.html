@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ANTLR SQL Parser API</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, 'Segoe UI', Roboto, 'Noto Sans SC', sans-serif; background: #0d1117; color: #e6edf3; line-height: 1.6; }
+        .header { background: linear-gradient(135deg, #161b22 0%, #0d1117 100%); border-bottom: 1px solid #30363d; padding: 32px 0; text-align: center; }
+        .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .header h1 span { color: #58a6ff; }
+        .header p { color: #8b949e; font-size: 14px; }
+        .badges { display: flex; justify-content: center; gap: 8px; margin-top: 12px; }
+        .badge { padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+        .badge.green { background: #23863622; color: #3fb950; border: 1px solid #238636; }
+        .badge.blue { background: #1f6feb22; color: #58a6ff; border: 1px solid #1f6feb; }
+        .badge.purple { background: #8957e522; color: #bc8cff; border: 1px solid #8957e5; }
+        .container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+        .section { margin-bottom: 24px; }
+        .section-title { font-size: 18px; font-weight: 600; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #21262d; display: flex; align-items: center; gap: 8px; }
+        .api-card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; margin-bottom: 12px; overflow: hidden; transition: border-color 0.2s; }
+        .api-card:hover { border-color: #58a6ff44; }
+        .api-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; user-select: none; }
+        .api-header:hover { background: #21262d; }
+        .method { padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; font-family: monospace; min-width: 52px; text-align: center; }
+        .method.post { background: #23863633; color: #3fb950; }
+        .method.get { background: #1f6feb33; color: #58a6ff; }
+        .path { font-family: 'Fira Code', monospace; font-size: 14px; font-weight: 500; color: #e6edf3; }
+        .desc { color: #8b949e; font-size: 13px; margin-left: auto; }
+        .api-body { display: none; border-top: 1px solid #21262d; padding: 16px; background: #0d1117; }
+        .api-body.open { display: block; }
+        .field-group { margin-bottom: 12px; }
+        .field-group label { display: block; font-size: 12px; color: #8b949e; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        textarea { width: 100%; min-height: 80px; background: #161b22; color: #e6edf3; border: 1px solid #30363d; border-radius: 6px; padding: 10px; font-family: 'Fira Code', monospace; font-size: 13px; resize: vertical; outline: none; }
+        textarea:focus { border-color: #58a6ff; }
+        .options-row { display: flex; gap: 12px; flex-wrap: wrap; }
+        .option { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+        .option select, .option input[type="number"] { background: #161b22; color: #e6edf3; border: 1px solid #30363d; border-radius: 4px; padding: 4px 8px; font-size: 13px; outline: none; }
+        .option input[type="checkbox"] { accent-color: #58a6ff; }
+        .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+        .btn { padding: 8px 20px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+        .btn-primary { background: #238636; color: #fff; }
+        .btn-primary:hover { background: #2ea043; }
+        .btn-secondary { background: #21262d; color: #c9d1d9; border: 1px solid #30363d; }
+        .btn-secondary:hover { background: #30363d; }
+        .response-area { margin-top: 12px; }
+        .response-area label { display: block; font-size: 12px; color: #8b949e; margin-bottom: 4px; }
+        .response-box { background: #161b22; border: 1px solid #30363d; border-radius: 6px; padding: 12px; font-family: 'Fira Code', monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; max-height: 400px; overflow-y: auto; color: #7ee787; }
+        .response-box.error { color: #f85149; }
+        .response-box.loading { color: #8b949e; font-style: italic; }
+        .status-bar { display: flex; gap: 16px; font-size: 12px; color: #8b949e; margin-top: 6px; }
+        .status-bar .ok { color: #3fb950; }
+        .status-bar .err { color: #f85149; }
+        .playground { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; }
+        .playground h3 { font-size: 15px; margin-bottom: 12px; }
+        .quick-btns { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+        .quick-btn { padding: 5px 12px; border-radius: 4px; font-size: 12px; background: #21262d; color: #c9d1d9; border: 1px solid #30363d; cursor: pointer; }
+        .quick-btn:hover { background: #30363d; color: #e6edf3; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🔧 <span>ANTLR SQL Parser</span> REST API</h1>
+    <p>支持 MySQL / PostgreSQL / SparkSQL 语法解析、元数据提取、审计分析、格式化、数据血缘、语法树可视化</p>
+    <div class="badges">
+        <span class="badge green">Javalin 5.6</span>
+        <span class="badge blue">ANTLR 4.13</span>
+        <span class="badge purple">13 个端点</span>
+    </div>
+</div>
+
+<div class="container">
+
+    <!-- Quick Playground -->
+    <div class="section">
+        <div class="section-title">🎮 快速测试</div>
+        <div class="playground">
+            <h3>输入 SQL 后点击功能按钮</h3>
+            <div class="field-group">
+                <textarea id="global-sql" placeholder="输入 SQL 语句...">SELECT u.name, COUNT(o.id) AS order_count, SUM(o.amount) AS total_amount FROM users u JOIN orders o ON u.id = o.user_id WHERE u.status = 'active' GROUP BY u.name ORDER BY total_amount DESC</textarea>
+            </div>
+            <div class="quick-btns">
+                <button class="quick-btn" onclick="quickTest('/api/sql/parse')">📋 解析</button>
+                <button class="quick-btn" onclick="quickTest('/api/sql/validate')">✅ 验证</button>
+                <button class="quick-btn" onclick="quickTest('/api/sql/metadata')">📊 元数据</button>
+                <button class="quick-btn" onclick="quickTest('/api/sql/audit')">🔒 审计</button>
+                <button class="quick-btn" onclick="quickTest('/api/sql/format')">✨ 格式化</button>
+                <button class="quick-btn" onclick="quickTest('/api/sql/lineage')">🔗 血缘(JSON)</button>
+                <button class="quick-btn" onclick="quickTest('/api/sql/lineage/ascii')">📝 血缘(ASCII)</button>
+                <button class="quick-btn" onclick="quickTestHtml('/api/sql/lineage/html')">🌐 血缘(HTML)</button>
+                <button class="quick-btn" onclick="quickTest('/api/sql/visualize/ascii')">🌲 语法树(ASCII)</button>
+                <button class="quick-btn" onclick="quickTest('/api/sql/visualize/json')">🌲 语法树(JSON)</button>
+            </div>
+            <div class="quick-btns" style="margin-top:4px">
+                <button class="quick-btn" onclick="loadSample('select')">示例: SELECT</button>
+                <button class="quick-btn" onclick="loadSample('insert')">示例: INSERT...SELECT</button>
+                <button class="quick-btn" onclick="loadSample('update')">示例: UPDATE</button>
+                <button class="quick-btn" onclick="loadSample('create')">示例: CREATE TABLE</button>
+                <button class="quick-btn" onclick="loadSample('delete')">示例: DELETE</button>
+                <button class="quick-btn" onclick="loadSample('join')">示例: 多表 JOIN</button>
+            </div>
+            <div class="response-area">
+                <label>响应结果</label>
+                <div class="response-box" id="global-response">点击上方按钮开始测试...</div>
+                <div class="status-bar" id="global-status"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- API 列表 -->
+    <div class="section">
+        <div class="section-title">📡 API 端点</div>
+
+        <!-- Health -->
+        <div class="api-card">
+            <div class="api-header" onclick="toggleBody(this)">
+                <span class="method get">GET</span>
+                <span class="path">/api/health</span>
+                <span class="desc">健康检查</span>
+            </div>
+            <div class="api-body">
+                <p style="color:#8b949e;font-size:13px;margin-bottom:12px">检查服务状态、版本、支持的方言和功能列表。</p>
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="callApi(this, 'GET', '/api/health')">发送请求</button>
+                </div>
+                <div class="response-area"><label>响应</label><div class="response-box"></div><div class="status-bar"></div></div>
+            </div>
+        </div>
+
+        <!-- Parse -->
+        <div class="api-card">
+            <div class="api-header" onclick="toggleBody(this)">
+                <span class="method post">POST</span>
+                <span class="path">/api/sql/parse</span>
+                <span class="desc">解析 SQL 语法树</span>
+            </div>
+            <div class="api-body">
+                <p style="color:#8b949e;font-size:13px;margin-bottom:12px">支持 MySQL / PostgreSQL / SparkSQL。返回格式化的语法树文本。</p>
+                <div class="field-group"><label>请求体 (JSON)</label>
+                    <textarea class="req-body">{"sql": "SELECT id, name FROM users WHERE age > 18", "dialect": "mysql"}</textarea>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="callApi(this, 'POST', '/api/sql/parse')">发送请求</button>
+                </div>
+                <div class="response-area"><label>响应</label><div class="response-box"></div><div class="status-bar"></div></div>
+            </div>
+        </div>
+
+        <!-- Validate -->
+        <div class="api-card">
+            <div class="api-header" onclick="toggleBody(this)">
+                <span class="method post">POST</span>
+                <span class="path">/api/sql/validate</span>
+                <span class="desc">验证 SQL 语法</span>
+            </div>
+            <div class="api-body">
+                <p style="color:#8b949e;font-size:13px;margin-bottom:12px">检查 SQL 是否语法正确。</p>
+                <div class="field-group"><label>请求体 (JSON)</label>
+                    <textarea class="req-body">{"sql": "SELECT * FROM users WHERE", "dialect": "mysql"}</textarea>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="callApi(this, 'POST', '/api/sql/validate')">发送请求</button>
+                </div>
+                <div class="response-area"><label>响应</label><div class="response-box"></div><div class="status-bar"></div></div>
+            </div>
+        </div>
+
+        <!-- Metadata -->
+        <div class="api-card">
+            <div class="api-header" onclick="toggleBody(this)">
+                <span class="method post">POST</span>
+                <span class="path">/api/sql/metadata</span>
+                <span class="desc">提取 SQL 元数据（表/列/别名/函数）</span>
+            </div>
+            <div class="api-body">
+                <p style="color:#8b949e;font-size:13px;margin-bottom:12px">使用 Visitor 模式提取 MySQL SQL 的表名、列名、别名、函数调用等元数据。</p>
+                <div class="field-group"><label>请求体 (JSON)</label>
+                    <textarea class="req-body">{"sql": "SELECT u.name, COUNT(o.id) AS order_count FROM users u JOIN orders o ON u.id = o.user_id GROUP BY u.name"}</textarea>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="callApi(this, 'POST', '/api/sql/metadata')">发送请求</button>
+                </div>
+                <div class="response-area"><label>响应</label><div class="response-box"></div><div class="status-bar"></div></div>
+            </div>
+        </div>
+
+        <!-- Audit -->
+        <div class="api-card">
+            <div class="api-header" onclick="toggleBody(this)">
+                <span class="method post">POST</span>
+                <span class="path">/api/sql/audit</span>
+                <span class="desc">SQL 审计分析（风险检测/表访问追踪）</span>
+            </div>
+            <div class="api-body">
+                <p style="color:#8b949e;font-size:13px;margin-bottom:12px">使用 Listener 模式审计 SQL：危险操作检测、表访问追踪、优化建议等。</p>
+                <div class="field-group"><label>请求体 (JSON)</label>
+                    <textarea class="req-body">{"sql": "DELETE FROM users"}</textarea>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="callApi(this, 'POST', '/api/sql/audit')">发送请求</button>
+                </div>
+                <div class="response-area"><label>响应</label><div class="response-box"></div><div class="status-bar"></div></div>
+            </div>
+        </div>
+
+        <!-- Format -->
+        <div class="api-card">
+            <div class="api-header" onclick="toggleBody(this)">
+                <span class="method post">POST</span>
+                <span class="path">/api/sql/format</span>
+                <span class="desc">SQL 格式化/美化</span>
+            </div>
+            <div class="api-body">
+                <p style="color:#8b949e;font-size:13px;margin-bottom:12px">将凌乱的 SQL 格式化为标准缩进格式，支持自定义缩进和关键字大小写。</p>
+                <div class="field-group"><label>请求体 (JSON)</label>
+                    <textarea class="req-body">{"sql": "select u.name,count(o.id) as cnt from users u join orders o on u.id=o.user_id where u.age>18 group by u.name order by cnt desc", "indentSize": 4, "uppercaseKeywords": true}</textarea>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="callApi(this, 'POST', '/api/sql/format')">发送请求</button>
+                </div>
+                <div class="response-area"><label>响应</label><div class="response-box"></div><div class="status-bar"></div></div>
+            </div>
+        </div>
+
+        <!-- Lineage JSON -->
+        <div class="api-card">
+            <div class="api-header" onclick="toggleBody(this)">
+                <span class="method post">POST</span>
+                <span class="path">/api/sql/lineage</span>
+                <span class="desc">列级数据血缘分析 (JSON)</span>
+            </div>
+            <div class="api-body">
+                <p style="color:#8b949e;font-size:13px;margin-bottom:12px">分析 SQL 的列级数据血缘（Data Lineage），返回完整的血缘图 JSON。</p>
+                <div class="field-group"><label>请求体 (JSON)</label>
+                    <textarea class="req-body">{"sql": "INSERT INTO user_summary (user_name, total_orders, total_amount) SELECT u.name, COUNT(o.id), SUM(o.amount) FROM users u JOIN orders o ON u.id = o.user_id GROUP BY u.name"}</textarea>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="callApi(this, 'POST', '/api/sql/lineage')">发送请求</button>
+                </div>
+                <div class="response-area"><label>响应</label><div class="response-box"></div><div class="status-bar"></div></div>
+            </div>
+        </div>
+
+        <!-- Lineage HTML -->
+        <div class="api-card">
+            <div class="api-header" onclick="toggleBody(this)">
+                <span class="method post">POST</span>
+                <span class="path">/api/sql/lineage/html</span>
+                <span class="desc">血缘图交互式 HTML 可视化</span>
+            </div>
+            <div class="api-body">
+                <p style="color:#8b949e;font-size:13px;margin-bottom:12px">返回自包含的交互式 HTML 血缘图页面，支持 hover 高亮、点击追踪。</p>
+                <div class="field-group"><label>请求体 (JSON)</label>
+                    <textarea class="req-body">{"sql": "INSERT INTO summary (name, total) SELECT u.name, SUM(o.amount) FROM users u JOIN orders o ON u.id = o.user_id GROUP BY u.name", "title": "INSERT...SELECT 血缘分析"}</textarea>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="callApiHtml(this, '/api/sql/lineage/html')">在新窗口查看</button>
+                </div>
+                <div class="response-area"><label>响应</label><div class="response-box">点击「在新窗口查看」将在新标签页打开 HTML 血缘图</div></div>
+            </div>
+        </div>
+
+        <!-- Lineage ASCII -->
+        <div class="api-card">
+            <div class="api-header" onclick="toggleBody(this)">
+                <span class="method post">POST</span>
+                <span class="path">/api/sql/lineage/ascii</span>
+                <span class="desc">血缘图 ASCII 文本报告</span>
+            </div>
+            <div class="api-body">
+                <div class="field-group"><label>请求体 (JSON)</label>
+                    <textarea class="req-body">{"sql": "SELECT name, age FROM users WHERE id = 1"}</textarea>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="callApi(this, 'POST', '/api/sql/lineage/ascii', true)">发送请求</button>
+                </div>
+                <div class="response-area"><label>响应</label><div class="response-box"></div><div class="status-bar"></div></div>
+            </div>
+        </div>
+
+        <!-- Visualize ASCII -->
+        <div class="api-card">
+            <div class="api-header" onclick="toggleBody(this)">
+                <span class="method post">POST</span>
+                <span class="path">/api/sql/visualize/ascii</span>
+                <span class="desc">语法树 ASCII 文本</span>
+            </div>
+            <div class="api-body">
+                <div class="field-group"><label>请求体 (JSON)</label>
+                    <textarea class="req-body">{"sql": "SELECT id FROM users"}</textarea>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-primary" onclick="callApi(this, 'POST', '/api/sql/visualize/ascii', true)">发送请求</button>
+                </div>
+                <div class="response-area"><label>响应</label><div class="response-box"></div><div class="status-bar"></div></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const SAMPLES = {
+    select: "SELECT u.name, COUNT(o.id) AS order_count, SUM(o.amount) AS total_amount\nFROM users u\nJOIN orders o ON u.id = o.user_id\nWHERE u.status = 'active'\nGROUP BY u.name\nORDER BY total_amount DESC",
+    insert: "INSERT INTO user_summary (user_name, total_orders, total_amount)\nSELECT u.name, COUNT(o.id), SUM(o.amount)\nFROM users u JOIN orders o ON u.id = o.user_id\nGROUP BY u.name",
+    update: "UPDATE employees SET salary = salary * 1.1, updated_at = '2026-01-01' WHERE department = 'engineering'",
+    create: "CREATE TABLE products (\n  id INT PRIMARY KEY,\n  name VARCHAR(100) NOT NULL,\n  price DECIMAL(10,2),\n  category_id INT,\n  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP\n)",
+    'delete': "DELETE FROM orders WHERE status = 'cancelled' AND created_at < '2025-01-01'",
+    join: "SELECT p.name AS product_name, c.name AS category_name, SUM(oi.quantity) AS total_sold\nFROM products p\nJOIN categories c ON p.category_id = c.id\nLEFT JOIN order_items oi ON p.id = oi.product_id\nGROUP BY p.name, c.name\nORDER BY total_sold DESC"
+};
+
+function loadSample(key) {
+    document.getElementById('global-sql').value = SAMPLES[key] || '';
+}
+
+function toggleBody(header) {
+    const body = header.nextElementSibling;
+    body.classList.toggle('open');
+}
+
+async function callApi(btn, method, path, isText) {
+    const card = btn.closest('.api-body');
+    const resBox = card.querySelector('.response-box');
+    const statusBar = card.querySelector('.status-bar');
+    resBox.className = 'response-box loading';
+    resBox.textContent = '请求中...';
+    if (statusBar) statusBar.innerHTML = '';
+
+    const start = performance.now();
+    try {
+        const opts = { method };
+        if (method === 'POST') {
+            const ta = card.querySelector('.req-body');
+            opts.headers = { 'Content-Type': 'application/json' };
+            opts.body = ta.value;
+        }
+        const resp = await fetch(path, opts);
+        const elapsed = Math.round(performance.now() - start);
+        const text = await resp.text();
+
+        let display = text;
+        if (!isText) {
+            try { display = JSON.stringify(JSON.parse(text), null, 2); } catch(e) {}
+        }
+        resBox.className = resp.ok ? 'response-box' : 'response-box error';
+        resBox.textContent = display;
+        if (statusBar) {
+            statusBar.innerHTML = `<span class="${resp.ok?'ok':'err'}">HTTP ${resp.status}</span><span>${elapsed}ms</span><span>${text.length} bytes</span>`;
+        }
+    } catch(e) {
+        resBox.className = 'response-box error';
+        resBox.textContent = '请求失败: ' + e.message;
+    }
+}
+
+async function callApiHtml(btn, path) {
+    const card = btn.closest('.api-body');
+    const ta = card.querySelector('.req-body');
+    try {
+        const resp = await fetch(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: ta.value
+        });
+        const html = await resp.text();
+        const w = window.open('', '_blank');
+        w.document.write(html);
+        w.document.close();
+    } catch(e) { alert('请求失败: ' + e.message); }
+}
+
+// 快速测试
+async function quickTest(path) {
+    const sql = document.getElementById('global-sql').value;
+    const resBox = document.getElementById('global-response');
+    const statusBar = document.getElementById('global-status');
+    resBox.className = 'response-box loading';
+    resBox.textContent = '请求中...';
+    statusBar.innerHTML = '';
+
+    const start = performance.now();
+    try {
+        const resp = await fetch(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sql, dialect: 'mysql', title: 'SQL 血缘分析' })
+        });
+        const elapsed = Math.round(performance.now() - start);
+        const text = await resp.text();
+        let display = text;
+        try { display = JSON.stringify(JSON.parse(text), null, 2); } catch(e) {}
+        resBox.className = resp.ok ? 'response-box' : 'response-box error';
+        resBox.textContent = display;
+        statusBar.innerHTML = `<span class="${resp.ok?'ok':'err'}">HTTP ${resp.status}</span><span>${elapsed}ms</span><span>${text.length} bytes</span>`;
+    } catch(e) {
+        resBox.className = 'response-box error';
+        resBox.textContent = '请求失败: ' + e.message;
+    }
+}
+
+async function quickTestHtml(path) {
+    const sql = document.getElementById('global-sql').value;
+    try {
+        const resp = await fetch(path, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sql, dialect: 'mysql', title: 'SQL 血缘分析' })
+        });
+        const html = await resp.text();
+        const w = window.open('', '_blank');
+        w.document.write(html);
+        w.document.close();
+    } catch(e) { alert('请求失败: ' + e.message); }
+}
+</script>
+</body>
+</html>
