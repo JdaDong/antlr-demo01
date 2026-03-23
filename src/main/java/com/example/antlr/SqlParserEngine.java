@@ -29,6 +29,7 @@ import com.example.antlr.sparksql.SparkSqlParser;
 import com.example.antlr.sparksql.SparkSqlMetadataVisitor;
 import com.example.antlr.sparksql.SparkSqlAuditListener;
 import com.example.antlr.sparksql.SparkSqlFormatter;
+import com.example.antlr.calcite.CalciteSqlEngine;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -613,5 +614,46 @@ public class SqlParserEngine {
             }
         }
         return sb.toString().trim();
+    }
+
+    // ================================================================
+    // Calcite 集成
+    // ================================================================
+
+    private volatile CalciteSqlEngine calciteEngine;
+
+    /**
+     * 获取 Calcite SQL 引擎（懒加载、线程安全）
+     * <p>
+     * 使用方式：
+     * <pre>
+     * CalciteSqlEngine calcite = engine.getCalciteEngine();
+     *
+     * // 方言转换
+     * String pgSql = calcite.convert(mysqlSql,
+     *     CalciteSqlEngine.CalciteDialect.MYSQL,
+     *     CalciteSqlEngine.CalciteDialect.POSTGRESQL);
+     *
+     * // SQL 格式化
+     * String formatted = calcite.format(sql, CalciteSqlEngine.CalciteDialect.MYSQL);
+     *
+     * // Schema 验证
+     * Map&lt;String, Map&lt;String, SqlTypeName&gt;&gt; schema = Map.of(
+     *     "users", Map.of("id", SqlTypeName.INTEGER, "name", SqlTypeName.VARCHAR)
+     * );
+     * calcite.validate(sql, CalciteSqlEngine.CalciteDialect.MYSQL, schema);
+     * </pre>
+     *
+     * @return CalciteSqlEngine 实例
+     */
+    public CalciteSqlEngine getCalciteEngine() {
+        if (calciteEngine == null) {
+            synchronized (this) {
+                if (calciteEngine == null) {
+                    calciteEngine = new CalciteSqlEngine();
+                }
+            }
+        }
+        return calciteEngine;
     }
 }

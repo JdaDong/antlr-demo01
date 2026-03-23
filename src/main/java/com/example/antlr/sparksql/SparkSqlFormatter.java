@@ -381,11 +381,18 @@ public class SparkSqlFormatter extends SparkSqlParserBaseVisitor<String> {
 
     @Override
     public String visitFrameBound(SparkSqlParser.FrameBoundContext ctx) {
-        return ctx.getText().toUpperCase().replace("PRECEDING", kw("PRECEDING"))
-                .replace("FOLLOWING", kw("FOLLOWING"))
-                .replace("UNBOUNDED", kw("UNBOUNDED"))
-                .replace("CURRENT", kw("CURRENT"))
-                .replace("ROW", kw("ROW"));
+        if (ctx.UNBOUNDED() != null && ctx.PRECEDING() != null) {
+            return kw("UNBOUNDED") + " " + kw("PRECEDING");
+        } else if (ctx.UNBOUNDED() != null && ctx.FOLLOWING() != null) {
+            return kw("UNBOUNDED") + " " + kw("FOLLOWING");
+        } else if (ctx.CURRENT() != null) {
+            return kw("CURRENT") + " " + kw("ROW");
+        } else if (ctx.PRECEDING() != null && ctx.expression() != null) {
+            return visit(ctx.expression()) + " " + kw("PRECEDING");
+        } else if (ctx.FOLLOWING() != null && ctx.expression() != null) {
+            return visit(ctx.expression()) + " " + kw("FOLLOWING");
+        }
+        return ctx.getText().toUpperCase();
     }
 
     @Override
@@ -413,10 +420,10 @@ public class SparkSqlFormatter extends SparkSqlParserBaseVisitor<String> {
     public String visitSortByClause(SparkSqlParser.SortByClauseContext ctx) {
         StringBuilder sb = new StringBuilder();
         sb.append(indent()).append(kw("SORT BY")).append(" ");
-        List<SparkSqlParser.ExpressionContext> exprs = ctx.expressionList().expression();
-        for (int i = 0; i < exprs.size(); i++) {
+        List<SparkSqlParser.OrderByElementContext> elements = ctx.orderByElement();
+        for (int i = 0; i < elements.size(); i++) {
             if (i > 0) sb.append(", ");
-            sb.append(visit(exprs.get(i)));
+            sb.append(visitOrderByElement(elements.get(i)));
         }
         return sb.toString();
     }
@@ -962,7 +969,7 @@ public class SparkSqlFormatter extends SparkSqlParserBaseVisitor<String> {
 
     @Override
     public String visitDotExpression(SparkSqlParser.DotExpressionContext ctx) {
-        return visit(ctx.expression()) + "." + ctx.identifier().getText();
+        return visit(ctx.expression(0)) + "." + visit(ctx.expression(1));
     }
 
     @Override
@@ -1096,12 +1103,10 @@ public class SparkSqlFormatter extends SparkSqlParserBaseVisitor<String> {
     public String visitMapExpression(SparkSqlParser.MapExpressionContext ctx) {
         StringBuilder sb = new StringBuilder();
         sb.append(kw("MAP")).append("(");
-        if (ctx.expressionList() != null) {
-            List<SparkSqlParser.ExpressionContext> exprs = ctx.expressionList().expression();
-            for (int i = 0; i < exprs.size(); i++) {
-                if (i > 0) sb.append(", ");
-                sb.append(visit(exprs.get(i)));
-            }
+        List<SparkSqlParser.ExpressionContext> exprs = ctx.expression();
+        for (int i = 0; i < exprs.size(); i++) {
+            if (i > 0) sb.append(", ");
+            sb.append(visit(exprs.get(i)));
         }
         sb.append(")");
         return sb.toString();

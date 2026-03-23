@@ -124,11 +124,6 @@ public class PostgreSqlFormatter extends PostgreSqlParserBaseVisitor<String> {
     public String visitSelectStatement(PostgreSqlParser.SelectStatementContext ctx) {
         StringBuilder sb = new StringBuilder();
 
-        // WITH clause
-        if (ctx.withClause() != null) {
-            sb.append(visitWithClause(ctx.withClause()));
-        }
-
         // SELECT [DISTINCT]
         sb.append(indent()).append(kw("SELECT"));
         if (ctx.DISTINCT() != null) {
@@ -367,11 +362,6 @@ public class PostgreSqlFormatter extends PostgreSqlParserBaseVisitor<String> {
     public String visitInsertStatement(PostgreSqlParser.InsertStatementContext ctx) {
         StringBuilder sb = new StringBuilder();
 
-        // WITH clause
-        if (ctx.withClause() != null) {
-            sb.append(visitWithClause(ctx.withClause()));
-        }
-
         sb.append(indent()).append(kw("INSERT INTO")).append(" ");
         sb.append(visitTableName(ctx.tableName()));
 
@@ -440,10 +430,6 @@ public class PostgreSqlFormatter extends PostgreSqlParserBaseVisitor<String> {
     public String visitUpdateStatement(PostgreSqlParser.UpdateStatementContext ctx) {
         StringBuilder sb = new StringBuilder();
 
-        if (ctx.withClause() != null) {
-            sb.append(visitWithClause(ctx.withClause()));
-        }
-
         sb.append(indent()).append(kw("UPDATE")).append(" ");
         sb.append(visitTableName(ctx.tableName()));
         if (ctx.alias() != null) {
@@ -485,10 +471,6 @@ public class PostgreSqlFormatter extends PostgreSqlParserBaseVisitor<String> {
     public String visitDeleteStatement(PostgreSqlParser.DeleteStatementContext ctx) {
         StringBuilder sb = new StringBuilder();
 
-        if (ctx.withClause() != null) {
-            sb.append(visitWithClause(ctx.withClause()));
-        }
-
         sb.append(indent()).append(kw("DELETE FROM")).append(" ");
         sb.append(visitTableName(ctx.tableName()));
         if (ctx.alias() != null) {
@@ -516,7 +498,7 @@ public class PostgreSqlFormatter extends PostgreSqlParserBaseVisitor<String> {
         StringBuilder sb = new StringBuilder();
         sb.append(indent()).append(kw("CREATE TABLE"));
         if (ctx.IF_() != null) sb.append(" ").append(kw("IF NOT EXISTS"));
-        sb.append(" ").append(visitTableName(ctx.tableName())).append(" (\n");
+        sb.append(" ").append(visitTableName(ctx.tableName(0))).append(" (\n");
 
         indentLevel++;
         List<PostgreSqlParser.TableElementContext> elements = ctx.tableElement();
@@ -630,7 +612,6 @@ public class PostgreSqlFormatter extends PostgreSqlParserBaseVisitor<String> {
         if (ctx.RANGE() != null) sb.append(kw("RANGE"));
         else if (ctx.LIST() != null) sb.append(kw("LIST"));
         else if (ctx.HASH() != null) sb.append(kw("HASH"));
-        sb.append(" (").append(visitColumnNameList_inline(ctx.columnNameList())).append(")");
         return sb.toString();
     }
 
@@ -699,15 +680,17 @@ public class PostgreSqlFormatter extends PostgreSqlParserBaseVisitor<String> {
             sb.append(kw("DROP COLUMN")).append(" ").append(ctx.columnName().getText());
         } else if (ctx.ALTER() != null && ctx.COLUMN() != null) {
             sb.append(kw("ALTER COLUMN")).append(" ").append(ctx.columnName().getText());
-            if (ctx.SET() != null) {
+            if (ctx.SET() != null && ctx.DEFAULT() != null) {
                 sb.append(" ").append(kw("SET DEFAULT")).append(" ").append(visit(ctx.expression()));
-            } else if (ctx.TYPE() != null) {
-                sb.append(" ").append(kw("TYPE")).append(" ").append(visitDataType(ctx.dataType()));
+            } else if (ctx.DROP() != null && ctx.DEFAULT() != null) {
+                sb.append(" ").append(kw("DROP DEFAULT"));
             }
         } else if (ctx.ADD() != null && ctx.tableConstraint() != null) {
             sb.append(kw("ADD")).append(" ").append(visitTableConstraint(ctx.tableConstraint()));
-        } else if (ctx.RENAME() != null) {
-            sb.append(kw("RENAME TO")).append(" ").append(ctx.identifier().getText());
+        } else if (ctx.DROP() != null && ctx.CONSTRAINT() != null) {
+            sb.append(kw("DROP CONSTRAINT")).append(" ").append(ctx.constraintName().getText());
+            if (ctx.CASCADE() != null) sb.append(" ").append(kw("CASCADE"));
+            if (ctx.RESTRICT() != null) sb.append(" ").append(kw("RESTRICT"));
         }
         return sb.toString();
     }
@@ -750,7 +733,7 @@ public class PostgreSqlFormatter extends PostgreSqlParserBaseVisitor<String> {
     @Override
     public String visitIndexColumn(PostgreSqlParser.IndexColumnContext ctx) {
         StringBuilder sb = new StringBuilder();
-        sb.append(visit(ctx.expression()));
+        sb.append(ctx.columnName().getText());
         if (ctx.ASC() != null) sb.append(" ").append(kw("ASC"));
         if (ctx.DESC() != null) sb.append(" ").append(kw("DESC"));
         return sb.toString();
@@ -980,11 +963,15 @@ public class PostgreSqlFormatter extends PostgreSqlParserBaseVisitor<String> {
     @Override
     public String visitColumnRef(PostgreSqlParser.ColumnRefContext ctx) {
         StringBuilder sb = new StringBuilder();
-        if (ctx.tableName() != null) {
-            sb.append(visitTableName(ctx.tableName())).append(".");
+        List<PostgreSqlParser.IdentifierContext> ids = ctx.identifier();
+        for (int i = 0; i < ids.size(); i++) {
+            if (i > 0) sb.append(".");
+            sb.append(ids.get(i).getText());
         }
-        if (ctx.STAR() != null) sb.append("*");
-        else if (ctx.columnName() != null) sb.append(ctx.columnName().getText());
+        if (ctx.STAR() != null) {
+            if (!ids.isEmpty()) sb.append(".");
+            sb.append("*");
+        }
         return sb.toString();
     }
 

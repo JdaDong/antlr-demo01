@@ -520,4 +520,515 @@ class SparkSqlFormatterTest {
             )).as("复杂 SQL 格式化不应抛异常").doesNotThrowAnyException();
         }
     }
+
+    // ================================================================
+    // SORT BY 格式化
+    // ================================================================
+
+    @Nested
+    @DisplayName("SORT BY 格式化")
+    class SortByFormatTests {
+
+        @Test
+        @DisplayName("简单 SORT BY 应正确格式化")
+        void testSimpleSortBy() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, name FROM users SORT BY name");
+
+            assertThat(formatted).as("应有 SORT BY").contains("SORT BY");
+            assertThat(formatted).as("应保留排序列名 name").contains("name");
+        }
+
+        @Test
+        @DisplayName("SORT BY 多列应正确格式化")
+        void testSortByMultipleColumns() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, name, age FROM users SORT BY age, name");
+
+            assertThat(formatted).as("应有 SORT BY").contains("SORT BY");
+            assertThat(formatted).as("应包含 age").contains("age");
+            assertThat(formatted).as("应包含 name").contains("name");
+        }
+
+        @Test
+        @DisplayName("SORT BY 带 ASC/DESC 应正确格式化")
+        void testSortByWithDirection() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, name, age FROM users SORT BY age DESC, name ASC");
+
+            assertThat(formatted).as("应有 SORT BY").contains("SORT BY");
+            assertThat(formatted).as("应有 DESC").contains("DESC");
+            assertThat(formatted).as("应有 ASC").contains("ASC");
+        }
+
+        @Test
+        @DisplayName("SORT BY 结合 DISTRIBUTE BY 应正确格式化")
+        void testSortByWithDistributeBy() {
+            // 注意：语法定义中 SORT BY 在 DISTRIBUTE BY 之前
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, name, dept FROM users SORT BY name DISTRIBUTE BY dept");
+
+            assertThat(formatted).as("应有 DISTRIBUTE BY").contains("DISTRIBUTE BY");
+            assertThat(formatted).as("应有 SORT BY").contains("SORT BY");
+        }
+
+        @Test
+        @DisplayName("SORT BY 不应抛异常")
+        void testSortByNoException() {
+            assertThatCode(() -> engine.formatSparkSql(
+                    "SELECT city, COUNT(*) AS cnt FROM users GROUP BY city SORT BY cnt DESC"
+            )).as("SORT BY 格式化不应抛异常").doesNotThrowAnyException();
+        }
+    }
+
+    // ================================================================
+    // Dot 表达式格式化 (table.column)
+    // ================================================================
+
+    @Nested
+    @DisplayName("Dot 表达式格式化")
+    class DotExpressionFormatTests {
+
+        @Test
+        @DisplayName("table.column 引用应保留点号")
+        void testTableDotColumn() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT users.id, users.name FROM users");
+
+            assertThat(formatted).as("应保留 users.id").contains("users.id");
+            assertThat(formatted).as("应保留 users.name").contains("users.name");
+        }
+
+        @Test
+        @DisplayName("别名.列名引用应保留点号")
+        void testAliasDotColumn() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT u.id, u.name FROM users u");
+
+            assertThat(formatted).as("应保留 u.id").contains("u.id");
+            assertThat(formatted).as("应保留 u.name").contains("u.name");
+        }
+
+        @Test
+        @DisplayName("JOIN 中 dot 表达式应保留")
+        void testDotExpressionInJoin() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT u.name, o.amount FROM users u INNER JOIN orders o ON u.id = o.user_id");
+
+            assertThat(formatted).as("应保留 u.name").contains("u.name");
+            assertThat(formatted).as("应保留 o.amount").contains("o.amount");
+            assertThat(formatted).as("应保留 u.id").contains("u.id");
+            assertThat(formatted).as("应保留 o.user_id").contains("o.user_id");
+        }
+
+        @Test
+        @DisplayName("WHERE 条件中 dot 表达式应保留")
+        void testDotExpressionInWhere() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT t.id FROM mytable t WHERE t.status = 'active' AND t.age > 18");
+
+            assertThat(formatted).as("应保留 t.id").contains("t.id");
+            assertThat(formatted).as("应保留 t.status").contains("t.status");
+            assertThat(formatted).as("应保留 t.age").contains("t.age");
+        }
+
+        @Test
+        @DisplayName("三层 dot 表达式 (db.table.column) 应保留")
+        void testThreeLevelDotExpression() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT mydb.users.id, mydb.users.name FROM mydb.users");
+
+            assertThat(formatted).as("应保留 mydb.users 或 mydb.users.id 引用")
+                    .satisfiesAnyOf(
+                        f -> assertThat(f).contains("mydb.users.id"),
+                        f -> assertThat(f).contains("mydb.users")
+                    );
+        }
+
+        @Test
+        @DisplayName("dot 表达式与聚合函数结合应保留")
+        void testDotExpressionWithAggFunction() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT u.dept, COUNT(u.id) AS cnt FROM users u GROUP BY u.dept");
+
+            assertThat(formatted).as("应保留 u.dept").contains("u.dept");
+            assertThat(formatted).as("应保留 u.id").contains("u.id");
+        }
+
+        @Test
+        @DisplayName("dot 表达式在 ORDER BY 中应保留")
+        void testDotExpressionInOrderBy() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT u.name, u.age FROM users u ORDER BY u.age DESC, u.name ASC");
+
+            assertThat(formatted).as("应保留 u.name").contains("u.name");
+            assertThat(formatted).as("应保留 u.age").contains("u.age");
+        }
+    }
+
+    // ================================================================
+    // 窗口函数格式化
+    // ================================================================
+
+    @Nested
+    @DisplayName("窗口函数格式化")
+    class WindowFunctionFormatTests {
+
+        // ---------- 内联窗口 OVER 子句 ----------
+
+        @Test
+        @DisplayName("ROW_NUMBER() OVER (PARTITION BY ... ORDER BY ...) 基本窗口函数")
+        void testRowNumberOverPartitionOrderBy() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, name, ROW_NUMBER() OVER (PARTITION BY dept ORDER BY salary DESC) AS rn FROM employees");
+
+            assertThat(formatted).as("应包含 ROW_NUMBER").containsIgnoringCase("ROW_NUMBER");
+            assertThat(formatted).as("应包含 OVER").containsIgnoringCase("OVER");
+            assertThat(formatted).as("应包含 PARTITION BY").containsIgnoringCase("PARTITION BY");
+            assertThat(formatted).as("应包含 ORDER BY").containsIgnoringCase("ORDER BY");
+            assertThat(formatted).as("应包含 DESC").containsIgnoringCase("DESC");
+        }
+
+        @Test
+        @DisplayName("SUM() OVER (PARTITION BY ...) 聚合窗口函数")
+        void testSumOverPartition() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT dept, salary, SUM(salary) OVER (PARTITION BY dept) AS dept_total FROM employees");
+
+            assertThat(formatted).as("应包含 SUM").containsIgnoringCase("SUM");
+            assertThat(formatted).as("应包含 OVER").containsIgnoringCase("OVER");
+            assertThat(formatted).as("应包含 PARTITION BY").containsIgnoringCase("PARTITION BY");
+        }
+
+        @Test
+        @DisplayName("RANK() OVER (ORDER BY ...) 仅 ORDER BY 无 PARTITION BY")
+        void testRankOverOrderByOnly() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT name, score, RANK() OVER (ORDER BY score DESC) AS ranking FROM students");
+
+            assertThat(formatted).as("应包含 RANK").containsIgnoringCase("RANK");
+            assertThat(formatted).as("应包含 OVER").containsIgnoringCase("OVER");
+            assertThat(formatted).as("应包含 ORDER BY").containsIgnoringCase("ORDER BY");
+        }
+
+        @Test
+        @DisplayName("DENSE_RANK() OVER (...) 密集排名")
+        void testDenseRankOver() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, DENSE_RANK() OVER (PARTITION BY category ORDER BY price ASC) AS dr FROM products");
+
+            assertThat(formatted).as("应包含 DENSE_RANK").containsIgnoringCase("DENSE_RANK");
+            assertThat(formatted).as("应包含 OVER").containsIgnoringCase("OVER");
+            assertThat(formatted).as("应包含 PARTITION BY").containsIgnoringCase("PARTITION BY");
+            assertThat(formatted).as("应包含 ASC").containsIgnoringCase("ASC");
+        }
+
+        @Test
+        @DisplayName("LAG() 和 LEAD() 偏移窗口函数")
+        void testLagAndLeadOver() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT event_date, value, LAG(value) OVER (ORDER BY event_date) AS prev_val, " +
+                    "LEAD(value) OVER (ORDER BY event_date) AS next_val FROM metrics");
+
+            assertThat(formatted).as("应包含 LAG").containsIgnoringCase("LAG");
+            assertThat(formatted).as("应包含 LEAD").containsIgnoringCase("LEAD");
+            assertThat(formatted).as("应包含 OVER").containsIgnoringCase("OVER");
+        }
+
+        @Test
+        @DisplayName("NTILE() 分桶窗口函数")
+        void testNtileOver() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, salary, NTILE(4) OVER (ORDER BY salary DESC) AS quartile FROM employees");
+
+            assertThat(formatted).as("应包含 NTILE").containsIgnoringCase("NTILE");
+            assertThat(formatted).as("应包含 OVER").containsIgnoringCase("OVER");
+        }
+
+        @Test
+        @DisplayName("COUNT() OVER (...) 计数窗口函数")
+        void testCountOver() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT dept, name, COUNT(*) OVER (PARTITION BY dept) AS dept_count FROM employees");
+
+            assertThat(formatted).as("应包含 COUNT").containsIgnoringCase("COUNT");
+            assertThat(formatted).as("应包含 OVER").containsIgnoringCase("OVER");
+            assertThat(formatted).as("应包含 PARTITION BY").containsIgnoringCase("PARTITION BY");
+        }
+
+        @Test
+        @DisplayName("AVG() OVER (...) 均值窗口函数")
+        void testAvgOver() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, salary, AVG(salary) OVER (PARTITION BY dept ORDER BY hire_date) AS running_avg FROM employees");
+
+            assertThat(formatted).as("应包含 AVG").containsIgnoringCase("AVG");
+            assertThat(formatted).as("应包含 OVER").containsIgnoringCase("OVER");
+            assertThat(formatted).as("应包含 PARTITION BY").containsIgnoringCase("PARTITION BY");
+            assertThat(formatted).as("应包含 ORDER BY").containsIgnoringCase("ORDER BY");
+        }
+
+        // ---------- 窗口帧 ROWS / RANGE ----------
+
+        @Test
+        @DisplayName("ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW 窗口帧")
+        void testRowsBetweenUnboundedPrecedingAndCurrentRow() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, salary, SUM(salary) OVER (PARTITION BY dept ORDER BY hire_date " +
+                    "ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_total FROM employees");
+
+            assertThat(formatted).as("应包含 ROWS").containsIgnoringCase("ROWS");
+            assertThat(formatted).as("应包含 BETWEEN").containsIgnoringCase("BETWEEN");
+            assertThat(formatted).as("应包含 UNBOUNDED PRECEDING").containsIgnoringCase("UNBOUNDED PRECEDING");
+            assertThat(formatted).as("应包含 CURRENT ROW").containsIgnoringCase("CURRENT ROW");
+        }
+
+        @Test
+        @DisplayName("ROWS BETWEEN N PRECEDING AND N FOLLOWING 有界窗口帧")
+        void testRowsBetweenNPrecedingAndNFollowing() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, value, AVG(value) OVER (ORDER BY id " +
+                    "ROWS BETWEEN 2 PRECEDING AND 2 FOLLOWING) AS moving_avg FROM data");
+
+            assertThat(formatted).as("应包含 ROWS").containsIgnoringCase("ROWS");
+            assertThat(formatted).as("应包含 BETWEEN").containsIgnoringCase("BETWEEN");
+            assertThat(formatted).as("应包含 PRECEDING").containsIgnoringCase("PRECEDING");
+            assertThat(formatted).as("应包含 FOLLOWING").containsIgnoringCase("FOLLOWING");
+        }
+
+        @Test
+        @DisplayName("ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING 窗口帧")
+        void testRowsBetweenCurrentRowAndUnboundedFollowing() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, salary, SUM(salary) OVER (PARTITION BY dept ORDER BY hire_date " +
+                    "ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS future_total FROM employees");
+
+            assertThat(formatted).as("应包含 ROWS").containsIgnoringCase("ROWS");
+            assertThat(formatted).as("应包含 CURRENT ROW").containsIgnoringCase("CURRENT ROW");
+            assertThat(formatted).as("应包含 UNBOUNDED FOLLOWING").containsIgnoringCase("UNBOUNDED FOLLOWING");
+        }
+
+        @Test
+        @DisplayName("ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING 全范围窗口帧")
+        void testRowsBetweenUnboundedPrecedingAndUnboundedFollowing() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, salary, MAX(salary) OVER (PARTITION BY dept " +
+                    "ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS dept_max FROM employees");
+
+            assertThat(formatted).as("应包含 ROWS").containsIgnoringCase("ROWS");
+            assertThat(formatted).as("应包含 UNBOUNDED PRECEDING").containsIgnoringCase("UNBOUNDED PRECEDING");
+            assertThat(formatted).as("应包含 UNBOUNDED FOLLOWING").containsIgnoringCase("UNBOUNDED FOLLOWING");
+        }
+
+        @Test
+        @DisplayName("RANGE BETWEEN ... 范围窗口帧")
+        void testRangeBetween() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, value, SUM(value) OVER (ORDER BY id " +
+                    "RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative FROM data");
+
+            assertThat(formatted).as("应包含 RANGE").containsIgnoringCase("RANGE");
+            assertThat(formatted).as("应包含 BETWEEN").containsIgnoringCase("BETWEEN");
+            assertThat(formatted).as("应包含 UNBOUNDED PRECEDING").containsIgnoringCase("UNBOUNDED PRECEDING");
+            assertThat(formatted).as("应包含 CURRENT ROW").containsIgnoringCase("CURRENT ROW");
+        }
+
+        // ---------- 命名窗口 WINDOW 子句 ----------
+
+        @Test
+        @DisplayName("WINDOW 子句定义单个命名窗口")
+        void testSingleNamedWindow() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, name, ROW_NUMBER() OVER (PARTITION BY dept ORDER BY salary DESC) AS rn " +
+                    "FROM employees " +
+                    "WINDOW w AS (PARTITION BY dept ORDER BY salary DESC)");
+
+            assertThat(formatted).as("应包含 WINDOW").containsIgnoringCase("WINDOW");
+            assertThat(formatted).as("应包含 AS").containsIgnoringCase("AS");
+            assertThat(formatted).as("应包含 PARTITION BY").containsIgnoringCase("PARTITION BY");
+        }
+
+        @Test
+        @DisplayName("WINDOW 子句定义多个命名窗口")
+        void testMultipleNamedWindows() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, SUM(salary) OVER (PARTITION BY dept) AS dept_total, " +
+                    "RANK() OVER (PARTITION BY dept ORDER BY salary DESC) AS ranking " +
+                    "FROM employees " +
+                    "WINDOW w1 AS (PARTITION BY dept), w2 AS (PARTITION BY dept ORDER BY salary DESC)");
+
+            assertThat(formatted).as("应包含 WINDOW").containsIgnoringCase("WINDOW");
+            assertThat(formatted).as("应包含窗口名 w1").contains("w1");
+            assertThat(formatted).as("应包含窗口名 w2").contains("w2");
+        }
+
+        // ---------- 多窗口函数组合 ----------
+
+        @Test
+        @DisplayName("同一查询中使用多个不同窗口函数")
+        void testMultipleWindowFunctionsInSameQuery() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, name, " +
+                    "ROW_NUMBER() OVER (PARTITION BY dept ORDER BY salary DESC) AS rn, " +
+                    "RANK() OVER (PARTITION BY dept ORDER BY salary DESC) AS rnk, " +
+                    "SUM(salary) OVER (PARTITION BY dept) AS dept_total " +
+                    "FROM employees");
+
+            assertThat(formatted).as("应包含 ROW_NUMBER").containsIgnoringCase("ROW_NUMBER");
+            assertThat(formatted).as("应包含 RANK").containsIgnoringCase("RANK");
+            assertThat(formatted).as("应包含 SUM").containsIgnoringCase("SUM");
+            // OVER 应出现 3 次
+            String upper = formatted.toUpperCase();
+            int overCount = 0;
+            int idx = 0;
+            while ((idx = upper.indexOf("OVER", idx)) != -1) {
+                overCount++;
+                idx += 4;
+            }
+            assertThat(overCount).as("应包含 3 个 OVER 子句").isGreaterThanOrEqualTo(3);
+        }
+
+        @Test
+        @DisplayName("窗口函数结合 WHERE 和 GROUP BY")
+        void testWindowFunctionWithWhereAndSubquery() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT dept, name, salary, " +
+                    "RANK() OVER (PARTITION BY dept ORDER BY salary DESC) AS dept_rank " +
+                    "FROM employees WHERE status = 'active'");
+
+            assertThat(formatted).as("应包含 RANK").containsIgnoringCase("RANK");
+            assertThat(formatted).as("应包含 OVER").containsIgnoringCase("OVER");
+            assertThat(formatted).as("应包含 WHERE").containsIgnoringCase("WHERE");
+        }
+
+        @Test
+        @DisplayName("窗口函数作为子查询使用")
+        void testWindowFunctionInSubquery() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT * FROM (" +
+                    "SELECT id, name, ROW_NUMBER() OVER (PARTITION BY dept ORDER BY salary DESC) AS rn " +
+                    "FROM employees) t WHERE t.rn = 1");
+
+            assertThat(formatted).as("应包含 ROW_NUMBER").containsIgnoringCase("ROW_NUMBER");
+            assertThat(formatted).as("应包含 OVER").containsIgnoringCase("OVER");
+            assertThat(formatted).as("应包含子查询结构").containsIgnoringCase("WHERE");
+        }
+
+        // ---------- PARTITION BY 多列 ----------
+
+        @Test
+        @DisplayName("PARTITION BY 多个列")
+        void testPartitionByMultipleColumns() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, SUM(amount) OVER (PARTITION BY region, dept, year ORDER BY month) AS running " +
+                    "FROM sales");
+
+            assertThat(formatted).as("应包含 PARTITION BY").containsIgnoringCase("PARTITION BY");
+            assertThat(formatted).as("应包含 region").containsIgnoringCase("region");
+            assertThat(formatted).as("应包含 dept").containsIgnoringCase("dept");
+            assertThat(formatted).as("应包含 year").containsIgnoringCase("year");
+        }
+
+        // ---------- ORDER BY 多列与方向 ----------
+
+        @Test
+        @DisplayName("窗口 ORDER BY 多列不同方向")
+        void testWindowOrderByMultipleColumnsDirections() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, ROW_NUMBER() OVER (PARTITION BY dept ORDER BY salary DESC, hire_date ASC) AS rn " +
+                    "FROM employees");
+
+            assertThat(formatted).as("应包含 ORDER BY").containsIgnoringCase("ORDER BY");
+            assertThat(formatted).as("应包含 DESC").containsIgnoringCase("DESC");
+            assertThat(formatted).as("应包含 ASC").containsIgnoringCase("ASC");
+        }
+
+        // ---------- 完整组合测试 ----------
+
+        @Test
+        @DisplayName("PARTITION BY + ORDER BY + ROWS 窗口帧完整组合")
+        void testFullWindowSpecCombination() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, name, salary, " +
+                    "AVG(salary) OVER (PARTITION BY dept ORDER BY hire_date " +
+                    "ROWS BETWEEN 3 PRECEDING AND CURRENT ROW) AS moving_avg " +
+                    "FROM employees");
+
+            assertThat(formatted).as("应包含 PARTITION BY").containsIgnoringCase("PARTITION BY");
+            assertThat(formatted).as("应包含 ORDER BY").containsIgnoringCase("ORDER BY");
+            assertThat(formatted).as("应包含 ROWS").containsIgnoringCase("ROWS");
+            assertThat(formatted).as("应包含 BETWEEN").containsIgnoringCase("BETWEEN");
+            assertThat(formatted).as("应包含 PRECEDING").containsIgnoringCase("PRECEDING");
+            assertThat(formatted).as("应包含 CURRENT ROW").containsIgnoringCase("CURRENT ROW");
+        }
+
+        @Test
+        @DisplayName("MIN/MAX 窗口函数")
+        void testMinMaxOverWindow() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, salary, " +
+                    "MIN(salary) OVER (PARTITION BY dept) AS dept_min, " +
+                    "MAX(salary) OVER (PARTITION BY dept) AS dept_max " +
+                    "FROM employees");
+
+            assertThat(formatted).as("应包含 MIN").containsIgnoringCase("MIN");
+            assertThat(formatted).as("应包含 MAX").containsIgnoringCase("MAX");
+            assertThat(formatted).as("应包含 OVER").containsIgnoringCase("OVER");
+        }
+
+        @Test
+        @DisplayName("FIRST_VALUE / LAST_VALUE 窗口函数")
+        void testFirstValueLastValueOver() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT id, name, " +
+                    "FIRST_VALUE(salary) OVER (PARTITION BY dept ORDER BY hire_date " +
+                    "ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS first_sal, " +
+                    "LAST_VALUE(salary) OVER (PARTITION BY dept ORDER BY hire_date " +
+                    "ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS last_sal " +
+                    "FROM employees");
+
+            assertThat(formatted).as("应包含 FIRST_VALUE").containsIgnoringCase("FIRST_VALUE");
+            assertThat(formatted).as("应包含 LAST_VALUE").containsIgnoringCase("LAST_VALUE");
+            assertThat(formatted).as("应包含 UNBOUNDED PRECEDING").containsIgnoringCase("UNBOUNDED PRECEDING");
+            assertThat(formatted).as("应包含 UNBOUNDED FOLLOWING").containsIgnoringCase("UNBOUNDED FOLLOWING");
+        }
+
+        // ---------- 格式化质量 ----------
+
+        @Test
+        @DisplayName("窗口函数格式化结果不应为空")
+        void testWindowFunctionFormattedNotEmpty() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT ROW_NUMBER() OVER (ORDER BY id) AS rn FROM t");
+
+            assertThat(formatted).as("格式化结果不应为空").isNotNull().isNotEmpty();
+        }
+
+        @Test
+        @DisplayName("窗口函数格式化不应抛出异常")
+        void testWindowFunctionFormatterDoesNotThrow() {
+            assertThatCode(() -> engine.formatSparkSql(
+                    "SELECT id, ROW_NUMBER() OVER (PARTITION BY dept ORDER BY salary DESC " +
+                    "ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS rn, " +
+                    "SUM(salary) OVER (PARTITION BY dept ORDER BY hire_date " +
+                    "RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS running_sum, " +
+                    "LAG(salary, 1) OVER (PARTITION BY dept ORDER BY hire_date) AS prev_salary " +
+                    "FROM employees WHERE status = 'active'"
+            )).as("复杂窗口函数 SQL 不应抛出异常").doesNotThrowAnyException();
+        }
+
+        @Test
+        @DisplayName("窗口函数格式化应保留表名和列名")
+        void testWindowFunctionPreservesIdentifiers() {
+            String formatted = engine.formatSparkSql(
+                    "SELECT emp_id, department, annual_salary, " +
+                    "AVG(annual_salary) OVER (PARTITION BY department) AS avg_dept_salary " +
+                    "FROM hr_employees");
+
+            assertThat(formatted).as("应保留 emp_id").containsIgnoringCase("emp_id");
+            assertThat(formatted).as("应保留 department").containsIgnoringCase("department");
+            assertThat(formatted).as("应保留 annual_salary").containsIgnoringCase("annual_salary");
+            assertThat(formatted).as("应保留 hr_employees").containsIgnoringCase("hr_employees");
+        }
+    }
 }
