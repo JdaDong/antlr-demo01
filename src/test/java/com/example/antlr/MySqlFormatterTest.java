@@ -2,7 +2,7 @@ package com.example.antlr;
 
 import org.junit.jupiter.api.*;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * MySqlFormatter 单元测试
@@ -32,11 +32,11 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "select id,name,age from users where age>18 order by name limit 10");
 
-            assertTrue(formatted.contains("SELECT"), "关键字应大写");
-            assertTrue(formatted.contains("FROM"), "FROM 应大写");
-            assertTrue(formatted.contains("WHERE"), "WHERE 应大写");
-            assertTrue(formatted.contains("ORDER BY"), "ORDER BY 应大写");
-            assertTrue(formatted.contains("LIMIT"), "LIMIT 应大写");
+            assertThat(formatted).as("关键字应大写").contains("SELECT");
+            assertThat(formatted).as("FROM 应大写").contains("FROM");
+            assertThat(formatted).as("WHERE 应大写").contains("WHERE");
+            assertThat(formatted).as("ORDER BY 应大写").contains("ORDER BY");
+            assertThat(formatted).as("LIMIT 应大写").contains("LIMIT");
         }
 
         @Test
@@ -53,7 +53,7 @@ class MySqlFormatterTest {
                     indentedColumnLines++;
                 }
             }
-            assertTrue(indentedColumnLines >= 3, "应有至少 3 行缩进的列名，实际: " + indentedColumnLines);
+            assertThat(indentedColumnLines).as("应有至少 3 行缩进的列名").isGreaterThanOrEqualTo(3);
         }
 
         @Test
@@ -62,9 +62,9 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "select u.name,o.amount from users u inner join orders o on u.id=o.user_id left join products p on o.product_id=p.id");
 
-            assertTrue(formatted.contains("INNER JOIN"), "应有 INNER JOIN");
-            assertTrue(formatted.contains("LEFT JOIN"), "应有 LEFT JOIN");
-            assertTrue(formatted.contains("ON"), "应有 ON");
+            assertThat(formatted).as("应有 INNER JOIN").contains("INNER JOIN");
+            assertThat(formatted).as("应有 LEFT JOIN").contains("LEFT JOIN");
+            assertThat(formatted).as("应有 ON").contains("ON");
         }
 
         @Test
@@ -81,7 +81,7 @@ class MySqlFormatterTest {
                     andLines++;
                 }
             }
-            assertTrue(andLines >= 2, "应有至少 2 行以 AND 开头，实际: " + andLines);
+            assertThat(andLines).as("应有至少 2 行以 AND 开头").isGreaterThanOrEqualTo(2);
         }
 
         @Test
@@ -90,8 +90,8 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "SELECT city, COUNT(*) FROM users GROUP BY city HAVING COUNT(*) > 5");
 
-            assertTrue(formatted.contains("GROUP BY"), "应有 GROUP BY");
-            assertTrue(formatted.contains("HAVING"), "应有 HAVING");
+            assertThat(formatted).as("应有 GROUP BY").contains("GROUP BY");
+            assertThat(formatted).as("应有 HAVING").contains("HAVING");
         }
 
         @Test
@@ -100,10 +100,10 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "SELECT name FROM users UNION SELECT product_name FROM products");
 
-            assertTrue(formatted.contains("UNION"), "应有 UNION");
+            assertThat(formatted).as("应有 UNION").contains("UNION");
             // UNION 前后应该有换行
             int unionIndex = formatted.indexOf("UNION");
-            assertTrue(unionIndex > 0, "UNION 应出现在格式化结果中");
+            assertThat(unionIndex).as("UNION 应出现在格式化结果中").isGreaterThan(0);
         }
 
         @Test
@@ -112,7 +112,7 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "SELECT DISTINCT city FROM users");
 
-            assertTrue(formatted.contains("DISTINCT"), "应保留 DISTINCT 关键字");
+            assertThat(formatted).as("应保留 DISTINCT 关键字").contains("DISTINCT");
         }
 
         @Test
@@ -121,7 +121,7 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "SELECT name FROM users WHERE id IN (SELECT user_id FROM orders WHERE amount > 100)");
 
-            assertTrue(formatted.contains("SELECT"), "应有 SELECT");
+            assertThat(formatted).as("应有 SELECT").contains("SELECT");
             // 子查询中的 SELECT 应该有缩进
             String[] lines = formatted.split("\n");
             boolean hasIndentedSelect = false;
@@ -131,7 +131,7 @@ class MySqlFormatterTest {
                     break;
                 }
             }
-            assertTrue(hasIndentedSelect, "子查询的 SELECT 应有缩进");
+            assertThat(hasIndentedSelect).as("子查询的 SELECT 应有缩进").isTrue();
         }
     }
 
@@ -149,8 +149,8 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "insert into users (name,email,age) values ('Alice','alice@test.com',25)");
 
-            assertTrue(formatted.contains("INSERT INTO"), "应有 INSERT INTO");
-            assertTrue(formatted.contains("VALUES"), "应有 VALUES");
+            assertThat(formatted).as("应有 INSERT INTO").contains("INSERT INTO");
+            assertThat(formatted).as("应有 VALUES").contains("VALUES");
         }
 
         @Test
@@ -159,8 +159,8 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "INSERT INTO users (name, age) VALUES ('Alice', 25), ('Bob', 30), ('Charlie', 35)");
 
-            assertTrue(formatted.contains("INSERT INTO"), "应有 INSERT INTO");
-            assertTrue(formatted.contains("VALUES"), "应有 VALUES");
+            assertThat(formatted).as("应有 INSERT INTO").contains("INSERT INTO");
+            assertThat(formatted).as("应有 VALUES").contains("VALUES");
         }
     }
 
@@ -178,9 +178,9 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "update users set name='Bob',age=30,email='bob@test.com' where id=1");
 
-            assertTrue(formatted.contains("UPDATE"), "应有 UPDATE");
-            assertTrue(formatted.contains("SET"), "应有 SET");
-            assertTrue(formatted.contains("WHERE"), "应有 WHERE");
+            assertThat(formatted).as("应有 UPDATE").contains("UPDATE");
+            assertThat(formatted).as("应有 SET").contains("SET");
+            assertThat(formatted).as("应有 WHERE").contains("WHERE");
         }
     }
 
@@ -198,9 +198,9 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "delete from users where id=1 and status='inactive'");
 
-            assertTrue(formatted.contains("DELETE"), "应有 DELETE");
-            assertTrue(formatted.contains("FROM"), "应有 FROM");
-            assertTrue(formatted.contains("WHERE"), "应有 WHERE");
+            assertThat(formatted).as("应有 DELETE").contains("DELETE");
+            assertThat(formatted).as("应有 FROM").contains("FROM");
+            assertThat(formatted).as("应有 WHERE").contains("WHERE");
         }
     }
 
@@ -219,10 +219,10 @@ class MySqlFormatterTest {
                     "CREATE TABLE users (id INT NOT NULL AUTO_INCREMENT, " +
                     "name VARCHAR(100), age INT DEFAULT 0, PRIMARY KEY (id))");
 
-            assertTrue(formatted.contains("CREATE TABLE"), "应有 CREATE TABLE");
+            assertThat(formatted).as("应有 CREATE TABLE").contains("CREATE TABLE");
             // 列定义应该换行
             String[] lines = formatted.split("\n");
-            assertTrue(lines.length >= 4, "CREATE TABLE 应有多行输出，实际: " + lines.length);
+            assertThat(lines.length).as("CREATE TABLE 应有多行输出").isGreaterThanOrEqualTo(4);
         }
 
         @Test
@@ -231,7 +231,7 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "CREATE TABLE IF NOT EXISTS users (id INT PRIMARY KEY)");
 
-            assertTrue(formatted.contains("IF NOT EXISTS"), "应保留 IF NOT EXISTS");
+            assertThat(formatted).as("应保留 IF NOT EXISTS").contains("IF NOT EXISTS");
         }
 
         @Test
@@ -240,8 +240,8 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "drop table if exists users");
 
-            assertTrue(formatted.contains("DROP TABLE"), "关键字应大写为 DROP TABLE");
-            assertTrue(formatted.contains("IF EXISTS"), "应保留 IF EXISTS");
+            assertThat(formatted).as("关键字应大写为 DROP TABLE").contains("DROP TABLE");
+            assertThat(formatted).as("应保留 IF EXISTS").contains("IF EXISTS");
         }
 
         @Test
@@ -250,7 +250,7 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "alter table users add column email varchar(255)");
 
-            assertTrue(formatted.contains("ALTER TABLE"), "应有 ALTER TABLE");
+            assertThat(formatted).as("应有 ALTER TABLE").contains("ALTER TABLE");
         }
 
         @Test
@@ -259,7 +259,7 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "truncate table users");
 
-            assertTrue(formatted.contains("TRUNCATE TABLE"), "关键字应大写为 TRUNCATE TABLE");
+            assertThat(formatted).as("关键字应大写为 TRUNCATE TABLE").contains("TRUNCATE TABLE");
         }
 
         @Test
@@ -268,8 +268,11 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "create index idx_name on users (name)");
 
-            assertTrue(formatted.contains("CREATE INDEX") || formatted.contains("CREATE"),
-                    "应有 CREATE INDEX");
+            assertThat(formatted).as("应有 CREATE INDEX")
+                    .satisfiesAnyOf(
+                        f -> assertThat(f).contains("CREATE INDEX"),
+                        f -> assertThat(f).contains("CREATE")
+                    );
         }
     }
 
@@ -287,12 +290,15 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "SELECT id, name FROM users WHERE age > 18", 4, false);
 
-            assertTrue(formatted.contains("select") || formatted.contains("SELECT"),
-                    "应能正常格式化");
+            assertThat(formatted).as("应能正常格式化")
+                    .satisfiesAnyOf(
+                        f -> assertThat(f).contains("select"),
+                        f -> assertThat(f).contains("SELECT")
+                    );
             // 小写模式下不应有大写关键字（除非原始内容中有）
             if (formatted.contains("select")) {
-                assertTrue(formatted.contains("from"), "小写模式下 FROM 应为 from");
-                assertTrue(formatted.contains("where"), "小写模式下 WHERE 应为 where");
+                assertThat(formatted).as("小写模式下 FROM 应为 from").contains("from");
+                assertThat(formatted).as("小写模式下 WHERE 应为 where").contains("where");
             }
         }
 
@@ -302,8 +308,8 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "SELECT id, name FROM users WHERE age > 18", 2, true);
 
-            assertNotNull(formatted, "格式化结果不应为 null");
-            assertFalse(formatted.isEmpty(), "格式化结果不应为空");
+            assertThat(formatted).as("格式化结果不应为 null").isNotNull();
+            assertThat(formatted).as("格式化结果不应为空").isNotEmpty();
         }
 
         @Test
@@ -312,7 +318,7 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "select id from users");
 
-            assertTrue(formatted.contains("SELECT"), "默认应大写关键字");
+            assertThat(formatted).as("默认应大写关键字").contains("SELECT");
         }
     }
 
@@ -330,11 +336,11 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "SELECT CASE WHEN age < 18 THEN '未成年' WHEN age < 60 THEN '成年' ELSE '老年' END AS age_group FROM users");
 
-            assertTrue(formatted.contains("CASE"), "应有 CASE");
-            assertTrue(formatted.contains("WHEN"), "应有 WHEN");
-            assertTrue(formatted.contains("THEN"), "应有 THEN");
-            assertTrue(formatted.contains("ELSE"), "应有 ELSE");
-            assertTrue(formatted.contains("END"), "应有 END");
+            assertThat(formatted).as("应有 CASE").contains("CASE");
+            assertThat(formatted).as("应有 WHEN").contains("WHEN");
+            assertThat(formatted).as("应有 THEN").contains("THEN");
+            assertThat(formatted).as("应有 ELSE").contains("ELSE");
+            assertThat(formatted).as("应有 END").contains("END");
         }
 
         @Test
@@ -343,7 +349,7 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "SELECT id FROM users WHERE status IN ('active', 'pending', 'approved')");
 
-            assertTrue(formatted.contains("IN"), "应有 IN");
+            assertThat(formatted).as("应有 IN").contains("IN");
         }
 
         @Test
@@ -352,7 +358,7 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "SELECT id FROM users WHERE age BETWEEN 18 AND 60");
 
-            assertTrue(formatted.contains("BETWEEN"), "应有 BETWEEN");
+            assertThat(formatted).as("应有 BETWEEN").contains("BETWEEN");
         }
 
         @Test
@@ -361,7 +367,7 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "SELECT id FROM users WHERE name LIKE '%Alice%'");
 
-            assertTrue(formatted.contains("LIKE"), "应有 LIKE");
+            assertThat(formatted).as("应有 LIKE").contains("LIKE");
         }
 
         @Test
@@ -370,7 +376,7 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "SELECT id FROM users WHERE email IS NULL");
 
-            assertTrue(formatted.contains("IS NULL"), "应有 IS NULL");
+            assertThat(formatted).as("应有 IS NULL").contains("IS NULL");
         }
     }
 
@@ -387,8 +393,8 @@ class MySqlFormatterTest {
         void testNotNullOrEmpty() {
             String formatted = engine.formatMySql("SELECT 1");
 
-            assertNotNull(formatted, "格式化结果不应为 null");
-            assertFalse(formatted.trim().isEmpty(), "格式化结果不应为空");
+            assertThat(formatted).as("格式化结果不应为 null").isNotNull();
+            assertThat(formatted.trim()).as("格式化结果不应为空").isNotEmpty();
         }
 
         @Test
@@ -396,7 +402,7 @@ class MySqlFormatterTest {
         void testEndsWithSemicolon() {
             String formatted = engine.formatMySql("SELECT id FROM users");
 
-            assertTrue(formatted.trim().endsWith(";"), "格式化结果应以分号结尾");
+            assertThat(formatted.trim()).as("格式化结果应以分号结尾").endsWith(";");
         }
 
         @Test
@@ -405,7 +411,7 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "SELECT id FROM my_special_table WHERE status = 'ok'");
 
-            assertTrue(formatted.contains("my_special_table"), "格式化不应丢失表名");
+            assertThat(formatted).as("格式化不应丢失表名").contains("my_special_table");
         }
 
         @Test
@@ -414,7 +420,7 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "SELECT id FROM users WHERE name = 'Hello World'");
 
-            assertTrue(formatted.contains("Hello World"), "格式化不应丢失字符串字面值");
+            assertThat(formatted).as("格式化不应丢失字符串字面值").contains("Hello World");
         }
 
         @Test
@@ -423,8 +429,8 @@ class MySqlFormatterTest {
             String formatted = engine.formatMySql(
                     "SELECT id FROM users WHERE age > 18 AND salary >= 50000.00");
 
-            assertTrue(formatted.contains("18"), "格式化不应丢失数字 18");
-            assertTrue(formatted.contains("50000"), "格式化不应丢失数字 50000");
+            assertThat(formatted).as("格式化不应丢失数字 18").contains("18");
+            assertThat(formatted).as("格式化不应丢失数字 50000").contains("50000");
         }
 
         @Test
@@ -434,14 +440,14 @@ class MySqlFormatterTest {
                     "CREATE TABLE t (id BIGINT UNSIGNED NOT NULL)");
 
             // 不应出现 BIGINTUNSIGNED（粘连）
-            assertFalse(formatted.contains("BIGINTUNSIGNED"),
-                    "BIGINT UNSIGNED 之间应有空格，不应粘连");
+            assertThat(formatted).as("BIGINT UNSIGNED 之间应有空格，不应粘连")
+                    .doesNotContain("BIGINTUNSIGNED");
         }
 
         @Test
         @DisplayName("复杂 SQL 格式化不应抛异常")
         void testComplexSqlNoException() {
-            assertDoesNotThrow(() -> engine.formatMySql(
+            assertThatCode(() -> engine.formatMySql(
                     "SELECT u.name, COUNT(o.id) AS order_count, MAX(o.amount) AS max_amount " +
                     "FROM users u " +
                     "INNER JOIN orders o ON u.id = o.user_id " +
@@ -452,7 +458,7 @@ class MySqlFormatterTest {
                     "HAVING COUNT(o.id) > 5 " +
                     "ORDER BY order_count DESC " +
                     "LIMIT 20"
-            ), "复杂 SQL 格式化不应抛异常");
+            )).as("复杂 SQL 格式化不应抛异常").doesNotThrowAnyException();
         }
     }
 }
