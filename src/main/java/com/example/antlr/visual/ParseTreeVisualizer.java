@@ -5,6 +5,8 @@ import org.antlr.v4.runtime.RuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import guru.nidi.graphviz.engine.Format;
+import guru.nidi.graphviz.engine.Graphviz;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -65,6 +67,52 @@ public class ParseTreeVisualizer {
     public void toDotFile(ParseTree tree, String filePath) throws IOException {
         String dot = toDot(tree);
         writeFile(filePath, dot);
+    }
+
+    // ================================================================
+    // Graphviz-java 渲染（直接生成 PNG/SVG，无需系统安装 Graphviz）
+    // ================================================================
+
+    /**
+     * 使用 graphviz-java 将语法树渲染为 PNG 文件
+     *
+     * @param tree     语法树
+     * @param filePath 输出 PNG 文件路径
+     */
+    public void renderToPng(ParseTree tree, String filePath) throws IOException {
+        String dot = toDot(tree);
+        Graphviz.fromString(dot)
+                .width(1600)
+                .render(Format.PNG)
+                .toFile(new File(filePath));
+    }
+
+    /**
+     * 使用 graphviz-java 将语法树渲染为 SVG 文件
+     *
+     * @param tree     语法树
+     * @param filePath 输出 SVG 文件路径
+     */
+    public void renderToSvg(ParseTree tree, String filePath) throws IOException {
+        String dot = toDot(tree);
+        Graphviz.fromString(dot)
+                .width(1600)
+                .render(Format.SVG)
+                .toFile(new File(filePath));
+    }
+
+    /**
+     * 使用 graphviz-java 将语法树渲染为 SVG 字符串
+     *
+     * @param tree 语法树
+     * @return SVG 格式字符串
+     */
+    public String renderToSvgString(ParseTree tree) {
+        String dot = toDot(tree);
+        return Graphviz.fromString(dot)
+                .width(1600)
+                .render(Format.SVG)
+                .toString();
     }
 
     private int buildDot(ParseTree node, StringBuilder sb, int[] idCounter) {

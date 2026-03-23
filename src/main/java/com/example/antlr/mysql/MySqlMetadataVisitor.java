@@ -1,6 +1,9 @@
 package com.example.antlr.mysql;
 
 import org.antlr.v4.runtime.tree.ParseTree;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 
 import java.util.*;
 
@@ -227,6 +230,7 @@ public class MySqlMetadataVisitor extends MySqlParserBaseVisitor<Void> {
 
         // 子查询中的 selectStatement 由 visitSelectStatement 处理
         return visitChildren(ctx);
+        
     }
 
     @Override
@@ -325,35 +329,35 @@ public class MySqlMetadataVisitor extends MySqlParserBaseVisitor<Void> {
     }
 
     public Set<String> getTables() {
-        return Collections.unmodifiableSet(tables);
+        return ImmutableSet.copyOf(tables);
     }
 
     public Set<String> getColumns() {
-        return Collections.unmodifiableSet(columns);
+        return ImmutableSet.copyOf(columns);
     }
 
     public Map<String, String> getAliases() {
-        return Collections.unmodifiableMap(aliases);
+        return ImmutableMap.copyOf(aliases);
     }
 
     public List<String> getFunctions() {
-        return Collections.unmodifiableList(functions);
+        return ImmutableList.copyOf(functions);
     }
 
     public Set<String> getWhereColumns() {
-        return Collections.unmodifiableSet(whereColumns);
+        return ImmutableSet.copyOf(whereColumns);
     }
 
     public List<String> getJoinConditions() {
-        return Collections.unmodifiableList(joinConditions);
+        return ImmutableList.copyOf(joinConditions);
     }
 
     public List<String> getOrderByColumns() {
-        return Collections.unmodifiableList(orderByColumns);
+        return ImmutableList.copyOf(orderByColumns);
     }
 
     public List<String> getGroupByColumns() {
-        return Collections.unmodifiableList(groupByColumns);
+        return ImmutableList.copyOf(groupByColumns);
     }
 
     public boolean isHasSubQuery() {

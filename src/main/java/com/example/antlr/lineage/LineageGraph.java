@@ -5,6 +5,12 @@ import com.google.gson.GsonBuilder;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import guru.nidi.graphviz.attribute.*;
+import guru.nidi.graphviz.engine.Format;
+import guru.nidi.graphviz.engine.Graphviz;
+import guru.nidi.graphviz.model.Factory;
+import guru.nidi.graphviz.model.MutableGraph;
+import guru.nidi.graphviz.model.MutableNode;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -594,6 +600,60 @@ public class LineageGraph {
                 new OutputStreamWriter(new FileOutputStream(filePath), StandardCharsets.UTF_8))) {
             writer.write(toDot());
         }
+    }
+
+    // ============================================================
+    // Graphviz-java 渲染（直接生成 PNG/SVG，无需系统安装 Graphviz）
+    // ============================================================
+
+    /**
+     * 使用 graphviz-java 将血缘图渲染为 PNG 文件
+     *
+     * @param filePath 输出 PNG 文件路径
+     */
+    public void renderToPng(String filePath) throws IOException {
+        Graphviz.fromString(toDot())
+                .width(1200)
+                .render(Format.PNG)
+                .toFile(new File(filePath));
+    }
+
+    /**
+     * 使用 graphviz-java 将血缘图渲染为 SVG 文件
+     *
+     * @param filePath 输出 SVG 文件路径
+     */
+    public void renderToSvg(String filePath) throws IOException {
+        Graphviz.fromString(toDot())
+                .width(1200)
+                .render(Format.SVG)
+                .toFile(new File(filePath));
+    }
+
+    /**
+     * 使用 graphviz-java 将血缘图渲染为 SVG 字符串
+     *
+     * @return SVG 格式字符串
+     */
+    public String renderToSvgString() {
+        return Graphviz.fromString(toDot())
+                .width(1200)
+                .render(Format.SVG)
+                .toString();
+    }
+
+    /**
+     * 使用 graphviz-java 将血缘图渲染为 PNG 字节数组
+     *
+     * @return PNG 图片字节数组
+     */
+    public byte[] renderToPngBytes() {
+        return Graphviz.fromString(toDot())
+                .width(1200)
+                .render(Format.PNG)
+                .toImage()
+                .toString()
+                .getBytes(StandardCharsets.UTF_8);
     }
 
     private String dotNodeId(ColumnNode c, String prefix) {

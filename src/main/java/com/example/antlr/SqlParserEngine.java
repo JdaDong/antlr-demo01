@@ -4,6 +4,10 @@ import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.antlr.v4.runtime.tree.Trees;
+import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.example.antlr.mysql.MySqlLexer;
 import com.example.antlr.mysql.MySqlParser;
@@ -12,11 +16,19 @@ import com.example.antlr.mysql.MySqlAuditListener;
 import com.example.antlr.mysql.MySqlFormatter;
 import com.example.antlr.lineage.LineageGraph;
 import com.example.antlr.lineage.MySqlLineageVisitor;
+import com.example.antlr.lineage.PostgreSqlLineageVisitor;
+import com.example.antlr.lineage.SparkSqlLineageVisitor;
 import com.example.antlr.visual.ParseTreeVisualizer;
 import com.example.antlr.postgresql.PostgreSqlLexer;
 import com.example.antlr.postgresql.PostgreSqlParser;
+import com.example.antlr.postgresql.PostgreSqlMetadataVisitor;
+import com.example.antlr.postgresql.PostgreSqlAuditListener;
+import com.example.antlr.postgresql.PostgreSqlFormatter;
 import com.example.antlr.sparksql.SparkSqlLexer;
 import com.example.antlr.sparksql.SparkSqlParser;
+import com.example.antlr.sparksql.SparkSqlMetadataVisitor;
+import com.example.antlr.sparksql.SparkSqlAuditListener;
+import com.example.antlr.sparksql.SparkSqlFormatter;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -27,6 +39,8 @@ import java.util.Arrays;
  */
 public class SqlParserEngine {
 
+    private static final Logger log = LoggerFactory.getLogger(SqlParserEngine.class);
+
     /**
      * 解析 SQL 语句
      *
@@ -35,6 +49,9 @@ public class SqlParserEngine {
      * @return 解析结果
      */
     public SqlParseResult parse(String sql, SqlDialect dialect) {
+        Preconditions.checkArgument(!Strings.isNullOrEmpty(sql), "SQL 语句不能为空");
+        Preconditions.checkNotNull(dialect, "SQL 方言不能为 null");
+        log.debug("开始解析 SQL [方言={}]: {}", dialect, sql.length() > 100 ? sql.substring(0, 100) + "..." : sql);
         long start = System.currentTimeMillis();
         try {
             ParseTree tree;
@@ -85,6 +102,7 @@ public class SqlParserEngine {
             long elapsed = System.currentTimeMillis() - start;
 
             if (errorListener.hasErrors()) {
+                log.warn("SQL 解析失败 [方言={}]: {}", dialect, errorListener.getErrorsAsString());
                 return new SqlParseResult.Builder()
                         .dialect(dialect)
                         .originalSql(sql)
@@ -97,6 +115,8 @@ public class SqlParserEngine {
             String treeStr = Trees.toStringTree(tree, Arrays.asList(parser.getRuleNames()));
             String prettyTree = prettyPrintTree(treeStr);
 
+            log.info("SQL 解析成功 [方言={}, 耗时={}ms]", dialect, elapsed);
+
             return new SqlParseResult.Builder()
                     .dialect(dialect)
                     .originalSql(sql)
@@ -107,6 +127,7 @@ public class SqlParserEngine {
 
         } catch (Exception e) {
             long elapsed = System.currentTimeMillis() - start;
+            log.error("SQL 解析异常 [方言={}]: {}", dialect, e.getMessage(), e);
             return new SqlParseResult.Builder()
                     .dialect(dialect)
                     .originalSql(sql)
@@ -242,6 +263,202 @@ public class SqlParserEngine {
     }
 
     // ============================================================
+    // PostgreSQL：元数据提取
+    // ============================================================
+
+    /**
+     * 使用 Visitor 模式提取 PostgreSQL SQL 的元数据信息
+     */
+    public PostgreSqlMetadataVisitor extractPostgreSqlMetadata(String sql) {
+        PostgreSqlLexer lexer = new PostgreSqlLexer(CharStreams.fromString(sql));
+        lexer.removeErrorListeners();
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        PostgreSqlParser parser = new PostgreSqlParser(tokens);
+        parser.removeErrorListeners();
+        ParseTree tree = parser.root();
+        PostgreSqlMetadataVisitor visitor = new PostgreSqlMetadataVisitor();
+        visitor.visit(tree);
+        return visitor;
+    }
+
+    // ============================================================
+    // PostgreSQL：审计
+    // ============================================================
+
+    /**
+     * 使用 Listener 模式对 PostgreSQL SQL 进行审计分析
+     */
+    public PostgreSqlAuditListener auditPostgreSql(String sql) {
+        PostgreSqlLexer lexer = new PostgreSqlLexer(CharStreams.fromString(sql));
+        lexer.removeErrorListeners();
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        PostgreSqlParser parser = new PostgreSqlParser(tokens);
+        parser.removeErrorListeners();
+        ParseTree tree = parser.root();
+        PostgreSqlAuditListener listener = new PostgreSqlAuditListener();
+        ParseTreeWalker walker = new ParseTreeWalker();
+        walker.walk(listener, tree);
+        return listener;
+    }
+
+    // ============================================================
+    // PostgreSQL：格式化
+    // ============================================================
+
+    /**
+     * 使用 Visitor 模式将 PostgreSQL SQL 格式化为美观的标准缩进格式
+     */
+    public String formatPostgreSql(String sql) {
+        return formatPostgreSql(sql, 4, true);
+    }
+
+    public String formatPostgreSql(String sql, int indentSize, boolean uppercaseKeywords) {
+        PostgreSqlLexer lexer = new PostgreSqlLexer(CharStreams.fromString(sql));
+        lexer.removeErrorListeners();
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        PostgreSqlParser parser = new PostgreSqlParser(tokens);
+        parser.removeErrorListeners();
+        ParseTree tree = parser.root();
+        PostgreSqlFormatter formatter = new PostgreSqlFormatter(indentSize, uppercaseKeywords);
+        return formatter.visit(tree);
+    }
+
+    // ============================================================
+    // PostgreSQL：血缘分析
+    // ============================================================
+
+    /**
+     * 使用 Visitor 模式分析 PostgreSQL SQL 的数据血缘（列级 Data Lineage）
+     */
+    public LineageGraph analyzePostgreSqlLineage(String sql) {
+        PostgreSqlLexer lexer = new PostgreSqlLexer(CharStreams.fromString(sql));
+        lexer.removeErrorListeners();
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        PostgreSqlParser parser = new PostgreSqlParser(tokens);
+        parser.removeErrorListeners();
+        ParseTree tree = parser.root();
+        PostgreSqlLineageVisitor visitor = new PostgreSqlLineageVisitor();
+        visitor.visit(tree);
+        LineageGraph graph = visitor.getLineageGraph();
+        graph.setSql(sql);
+        return graph;
+    }
+
+    /**
+     * 将 PostgreSQL SQL 血缘图渲染为 PNG 图片
+     */
+    public void renderPostgreSqlLineageToPng(String sql, String filePath) throws IOException {
+        LineageGraph graph = analyzePostgreSqlLineage(sql);
+        graph.renderToPng(filePath);
+    }
+
+    /**
+     * 将 PostgreSQL SQL 血缘图渲染为 SVG 图片
+     */
+    public void renderPostgreSqlLineageToSvg(String sql, String filePath) throws IOException {
+        LineageGraph graph = analyzePostgreSqlLineage(sql);
+        graph.renderToSvg(filePath);
+    }
+
+    // ============================================================
+    // SparkSQL：元数据提取
+    // ============================================================
+
+    /**
+     * 使用 Visitor 模式提取 SparkSQL SQL 的元数据信息
+     */
+    public SparkSqlMetadataVisitor extractSparkSqlMetadata(String sql) {
+        SparkSqlLexer lexer = new SparkSqlLexer(CharStreams.fromString(sql));
+        lexer.removeErrorListeners();
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        SparkSqlParser parser = new SparkSqlParser(tokens);
+        parser.removeErrorListeners();
+        ParseTree tree = parser.root();
+        SparkSqlMetadataVisitor visitor = new SparkSqlMetadataVisitor();
+        visitor.visit(tree);
+        return visitor;
+    }
+
+    // ============================================================
+    // SparkSQL：审计
+    // ============================================================
+
+    /**
+     * 使用 Listener 模式对 SparkSQL SQL 进行审计分析
+     */
+    public SparkSqlAuditListener auditSparkSql(String sql) {
+        SparkSqlLexer lexer = new SparkSqlLexer(CharStreams.fromString(sql));
+        lexer.removeErrorListeners();
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        SparkSqlParser parser = new SparkSqlParser(tokens);
+        parser.removeErrorListeners();
+        ParseTree tree = parser.root();
+        SparkSqlAuditListener listener = new SparkSqlAuditListener();
+        ParseTreeWalker walker = new ParseTreeWalker();
+        walker.walk(listener, tree);
+        return listener;
+    }
+
+    // ============================================================
+    // SparkSQL：格式化
+    // ============================================================
+
+    /**
+     * 使用 Visitor 模式将 SparkSQL SQL 格式化为美观的标准缩进格式
+     */
+    public String formatSparkSql(String sql) {
+        return formatSparkSql(sql, 4, true);
+    }
+
+    public String formatSparkSql(String sql, int indentSize, boolean uppercaseKeywords) {
+        SparkSqlLexer lexer = new SparkSqlLexer(CharStreams.fromString(sql));
+        lexer.removeErrorListeners();
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        SparkSqlParser parser = new SparkSqlParser(tokens);
+        parser.removeErrorListeners();
+        ParseTree tree = parser.root();
+        SparkSqlFormatter formatter = new SparkSqlFormatter(indentSize, uppercaseKeywords);
+        return formatter.visit(tree);
+    }
+
+    // ============================================================
+    // SparkSQL：血缘分析
+    // ============================================================
+
+    /**
+     * 使用 Visitor 模式分析 SparkSQL SQL 的数据血缘（列级 Data Lineage）
+     */
+    public LineageGraph analyzeSparkSqlLineage(String sql) {
+        SparkSqlLexer lexer = new SparkSqlLexer(CharStreams.fromString(sql));
+        lexer.removeErrorListeners();
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        SparkSqlParser parser = new SparkSqlParser(tokens);
+        parser.removeErrorListeners();
+        ParseTree tree = parser.root();
+        SparkSqlLineageVisitor visitor = new SparkSqlLineageVisitor();
+        visitor.visit(tree);
+        LineageGraph graph = visitor.getLineageGraph();
+        graph.setSql(sql);
+        return graph;
+    }
+
+    /**
+     * 将 SparkSQL SQL 血缘图渲染为 PNG 图片
+     */
+    public void renderSparkSqlLineageToPng(String sql, String filePath) throws IOException {
+        LineageGraph graph = analyzeSparkSqlLineage(sql);
+        graph.renderToPng(filePath);
+    }
+
+    /**
+     * 将 SparkSQL SQL 血缘图渲染为 SVG 图片
+     */
+    public void renderSparkSqlLineageToSvg(String sql, String filePath) throws IOException {
+        LineageGraph graph = analyzeSparkSqlLineage(sql);
+        graph.renderToSvg(filePath);
+    }
+
+    // ============================================================
     // 语法树可视化（已有）
     // ============================================================
 
@@ -324,6 +541,56 @@ public class SqlParserEngine {
 
         ParseTreeVisualizer visualizer = new ParseTreeVisualizer(parser);
         return visualizer.toAsciiTree(tree);
+    }
+
+    // ============================================================
+    // Graphviz-java 渲染（直接生成 PNG/SVG）
+    // ============================================================
+
+    /**
+     * 将 MySQL SQL 血缘图渲染为 PNG 图片
+     */
+    public void renderMySqlLineageToPng(String sql, String filePath) throws IOException {
+        LineageGraph graph = analyzeMySqlLineage(sql);
+        graph.renderToPng(filePath);
+    }
+
+    /**
+     * 将 MySQL SQL 血缘图渲染为 SVG 图片
+     */
+    public void renderMySqlLineageToSvg(String sql, String filePath) throws IOException {
+        LineageGraph graph = analyzeMySqlLineage(sql);
+        graph.renderToSvg(filePath);
+    }
+
+    /**
+     * 将 MySQL SQL 语法树渲染为 PNG 图片
+     */
+    public void renderMySqlTreeToPng(String sql, String filePath) throws IOException {
+        MySqlLexer lexer = new MySqlLexer(CharStreams.fromString(sql));
+        lexer.removeErrorListeners();
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        MySqlParser parser = new MySqlParser(tokens);
+        parser.removeErrorListeners();
+        ParseTree tree = parser.root();
+
+        ParseTreeVisualizer visualizer = new ParseTreeVisualizer(parser);
+        visualizer.renderToPng(tree, filePath);
+    }
+
+    /**
+     * 将 MySQL SQL 语法树渲染为 SVG 图片
+     */
+    public void renderMySqlTreeToSvg(String sql, String filePath) throws IOException {
+        MySqlLexer lexer = new MySqlLexer(CharStreams.fromString(sql));
+        lexer.removeErrorListeners();
+        CommonTokenStream tokens = new CommonTokenStream(lexer);
+        MySqlParser parser = new MySqlParser(tokens);
+        parser.removeErrorListeners();
+        ParseTree tree = parser.root();
+
+        ParseTreeVisualizer visualizer = new ParseTreeVisualizer(parser);
+        visualizer.renderToSvg(tree, filePath);
     }
 
     /**

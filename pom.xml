@@ -22,6 +22,10 @@
         <logback.version>1.4.14</logback.version>
         <lombok.version>1.18.34</lombok.version>
         <javalin.version>5.6.3</javalin.version>
+        <graphviz.version>0.18.1</graphviz.version>
+        <picocli.version>4.7.6</picocli.version>
+        <guava.version>33.4.5-jre</guava.version>
+        <assertj.version>3.27.0</assertj.version>
     </properties>
 
     <dependencies>
@@ -85,11 +89,40 @@
             <version>${javalin.version}</version>
         </dependency>
 
+        <!-- Graphviz-java (Java 端 DOT 渲染，无需安装 Graphviz) -->
+        <dependency>
+            <groupId>guru.nidi</groupId>
+            <artifactId>graphviz-java</artifactId>
+            <version>${graphviz.version}</version>
+        </dependency>
+
+        <!-- Picocli (强类型命令行参数解析框架) -->
+        <dependency>
+            <groupId>info.picocli</groupId>
+            <artifactId>picocli</artifactId>
+            <version>${picocli.version}</version>
+        </dependency>
+
+        <!-- Guava (Google 核心 Java 工具库) -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>${guava.version}</version>
+        </dependency>
+
         <!-- JUnit 5 -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>5.10.1</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- AssertJ (流式断言库) -->
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>${assertj.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -185,7 +218,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>com.example.antlr.SqlParserApp</mainClass>
+                            <mainClass>com.example.antlr.cli.SqlParserCli</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

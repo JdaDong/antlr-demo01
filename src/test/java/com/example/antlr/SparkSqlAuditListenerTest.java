@@ -4,18 +4,18 @@ import org.junit.jupiter.api.*;
 
 import static org.assertj.core.api.Assertions.*;
 
-import com.example.antlr.mysql.MySqlAuditListener;
+import com.example.antlr.sparksql.SparkSqlAuditListener;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 /**
- * MySqlAuditListener 单元测试
- * 测试 Listener 模式下的 SQL 审计能力
+ * SparkSqlAuditListener 单元测试
+ * 测试 Listener 模式下的 SparkSQL 审计能力
  */
-@DisplayName("MySqlAuditListener - Listener 模式 SQL 审计")
-class MySqlAuditListenerTest {
+@DisplayName("SparkSqlAuditListener - Listener 模式 SQL 审计")
+class SparkSqlAuditListenerTest {
 
     private SqlParserEngine engine;
 
@@ -35,7 +35,7 @@ class MySqlAuditListenerTest {
         @Test
         @DisplayName("SELECT 应记录 READ 操作")
         void testSelectTracksRead() {
-            MySqlAuditListener listener = engine.auditMySql(
+            SparkSqlAuditListener listener = engine.auditSparkSql(
                     "SELECT id, name FROM users WHERE age > 18");
 
             Map<String, Set<String>> access = listener.getTableAccess();
@@ -46,7 +46,7 @@ class MySqlAuditListenerTest {
         @Test
         @DisplayName("INSERT 应记录 INSERT 操作")
         void testInsertTracksInsert() {
-            MySqlAuditListener listener = engine.auditMySql(
+            SparkSqlAuditListener listener = engine.auditSparkSql(
                     "INSERT INTO users (name, email) VALUES ('Alice', 'alice@test.com')");
 
             Map<String, Set<String>> access = listener.getTableAccess();
@@ -55,32 +55,21 @@ class MySqlAuditListenerTest {
         }
 
         @Test
-        @DisplayName("UPDATE 应记录 UPDATE 操作")
-        void testUpdateTracksUpdate() {
-            MySqlAuditListener listener = engine.auditMySql(
-                    "UPDATE users SET name = 'Bob' WHERE id = 1");
+        @DisplayName("INSERT OVERWRITE 应记录 OVERWRITE 操作")
+        void testInsertOverwriteTracksOverwrite() {
+            SparkSqlAuditListener listener = engine.auditSparkSql(
+                    "INSERT OVERWRITE TABLE users SELECT * FROM staging_users");
 
             Map<String, Set<String>> access = listener.getTableAccess();
             assertThat(access).as("应追踪到 users 表").containsKey("users");
-            assertThat(access.get("users")).as("users 应有 UPDATE 操作").contains("UPDATE");
-        }
-
-        @Test
-        @DisplayName("DELETE 应记录 DELETE 操作")
-        void testDeleteTracksDelete() {
-            MySqlAuditListener listener = engine.auditMySql(
-                    "DELETE FROM users WHERE id = 1");
-
-            Map<String, Set<String>> access = listener.getTableAccess();
-            assertThat(access).as("应追踪到 users 表").containsKey("users");
-            assertThat(access.get("users")).as("users 应有 DELETE 操作").contains("DELETE");
+            assertThat(access.get("users")).as("users 应有 OVERWRITE 操作").contains("OVERWRITE");
         }
 
         @Test
         @DisplayName("CREATE TABLE 应记录 CREATE 操作")
         void testCreateTableTracksCreate() {
-            MySqlAuditListener listener = engine.auditMySql(
-                    "CREATE TABLE orders (id INT PRIMARY KEY, amount DECIMAL(10,2))");
+            SparkSqlAuditListener listener = engine.auditSparkSql(
+                    "CREATE TABLE orders (id INT, amount DECIMAL(10, 2))");
 
             Map<String, Set<String>> access = listener.getTableAccess();
             assertThat(access).as("应追踪到 orders 表").containsKey("orders");
@@ -90,7 +79,7 @@ class MySqlAuditListenerTest {
         @Test
         @DisplayName("DROP TABLE 应记录 DROP 操作")
         void testDropTableTracksDrop() {
-            MySqlAuditListener listener = engine.auditMySql(
+            SparkSqlAuditListener listener = engine.auditSparkSql(
                     "DROP TABLE IF EXISTS users");
 
             Map<String, Set<String>> access = listener.getTableAccess();
@@ -99,10 +88,10 @@ class MySqlAuditListenerTest {
         }
 
         @Test
-        @DisplayName("ALTER TABLE 应记录 ALTER 操作")
+        @DisplayName("ALTER TABLE ADD COLUMNS 应记录 ALTER 操作")
         void testAlterTableTracksAlter() {
-            MySqlAuditListener listener = engine.auditMySql(
-                    "ALTER TABLE users ADD COLUMN email VARCHAR(255)");
+            SparkSqlAuditListener listener = engine.auditSparkSql(
+                    "ALTER TABLE users ADD COLUMNS (email STRING)");
 
             Map<String, Set<String>> access = listener.getTableAccess();
             assertThat(access).as("应追踪到 users 表").containsKey("users");
@@ -110,20 +99,9 @@ class MySqlAuditListenerTest {
         }
 
         @Test
-        @DisplayName("TRUNCATE 应记录 TRUNCATE 操作")
-        void testTruncateTracksTruncate() {
-            MySqlAuditListener listener = engine.auditMySql(
-                    "TRUNCATE TABLE users");
-
-            Map<String, Set<String>> access = listener.getTableAccess();
-            assertThat(access).as("应追踪到 users 表").containsKey("users");
-            assertThat(access.get("users")).as("users 应有 TRUNCATE 操作").contains("TRUNCATE");
-        }
-
-        @Test
         @DisplayName("多表 JOIN 应追踪所有表")
         void testJoinTracksAllTables() {
-            MySqlAuditListener listener = engine.auditMySql(
+            SparkSqlAuditListener listener = engine.auditSparkSql(
                     "SELECT u.name, o.amount FROM users u " +
                     "INNER JOIN orders o ON u.id = o.user_id");
 
@@ -145,7 +123,7 @@ class MySqlAuditListenerTest {
         @Test
         @DisplayName("DROP TABLE 应触发危险告警")
         void testDropTableDanger() {
-            MySqlAuditListener listener = engine.auditMySql(
+            SparkSqlAuditListener listener = engine.auditSparkSql(
                     "DROP TABLE users");
 
             assertThat(listener.hasDangerousOperations()).as("DROP TABLE 应标记为危险操作").isTrue();
@@ -157,57 +135,27 @@ class MySqlAuditListenerTest {
         @Test
         @DisplayName("DROP DATABASE 应触发危险告警")
         void testDropDatabaseDanger() {
-            MySqlAuditListener listener = engine.auditMySql(
+            SparkSqlAuditListener listener = engine.auditSparkSql(
                     "DROP DATABASE mydb");
 
             assertThat(listener.hasDangerousOperations()).as("DROP DATABASE 应标记为危险操作").isTrue();
         }
 
         @Test
-        @DisplayName("TRUNCATE TABLE 应触发危险告警")
-        void testTruncateTableDanger() {
-            MySqlAuditListener listener = engine.auditMySql(
-                    "TRUNCATE TABLE users");
+        @DisplayName("INSERT OVERWRITE 应有告警")
+        void testInsertOverwriteWarning() {
+            SparkSqlAuditListener listener = engine.auditSparkSql(
+                    "INSERT OVERWRITE TABLE users SELECT * FROM staging_users");
 
-            assertThat(listener.hasDangerousOperations()).as("TRUNCATE 应标记为危险操作").isTrue();
-        }
-
-        @Test
-        @DisplayName("DELETE 无 WHERE 应有告警")
-        void testDeleteWithoutWhere() {
-            MySqlAuditListener listener = engine.auditMySql(
-                    "DELETE FROM users");
-
-            assertThat(listener.getWarnings()).as("DELETE 无 WHERE 应有告警").isNotEmpty();
-            assertThat(listener.getWarnings()).as("告警应提及缺少 WHERE 条件")
-                    .anyMatch(w -> w.contains("WHERE"));
-        }
-
-        @Test
-        @DisplayName("UPDATE 无 WHERE 应有告警")
-        void testUpdateWithoutWhere() {
-            MySqlAuditListener listener = engine.auditMySql(
-                    "UPDATE users SET status = 'inactive'");
-
-            assertThat(listener.getWarnings()).as("UPDATE 无 WHERE 应有告警").isNotEmpty();
-            assertThat(listener.getWarnings()).as("告警应提及缺少 WHERE 条件")
-                    .anyMatch(w -> w.contains("WHERE"));
-        }
-
-        @Test
-        @DisplayName("DELETE 有 WHERE 不应有缺 WHERE 告警")
-        void testDeleteWithWhere() {
-            MySqlAuditListener listener = engine.auditMySql(
-                    "DELETE FROM users WHERE id = 1");
-
-            assertThat(listener.getWarnings()).as("DELETE 有 WHERE 不应有缺 WHERE 告警")
-                    .noneMatch(w -> w.contains("WHERE"));
+            assertThat(listener.hasDangerousOperations()).as("INSERT OVERWRITE 应标记为危险操作").isTrue();
+            assertThat(listener.getWarnings()).as("告警应提及 OVERWRITE")
+                    .anyMatch(w -> w.contains("OVERWRITE"));
         }
 
         @Test
         @DisplayName("SELECT * 应有优化建议")
         void testSelectStarWarning() {
-            MySqlAuditListener listener = engine.auditMySql(
+            SparkSqlAuditListener listener = engine.auditSparkSql(
                     "SELECT * FROM users");
 
             assertThat(listener.getWarnings()).as("SELECT * 应有告警/建议").isNotEmpty();
@@ -216,7 +164,7 @@ class MySqlAuditListenerTest {
         @Test
         @DisplayName("安全的 SELECT 不应有危险标记")
         void testSafeSelectNoDanger() {
-            MySqlAuditListener listener = engine.auditMySql(
+            SparkSqlAuditListener listener = engine.auditSparkSql(
                     "SELECT id, name FROM users WHERE id = 1");
 
             assertThat(listener.hasDangerousOperations()).as("简单 SELECT 不应标记为危险").isFalse();
@@ -234,7 +182,7 @@ class MySqlAuditListenerTest {
         @Test
         @DisplayName("每条 SQL 都应产生审计事件")
         void testEventsGenerated() {
-            MySqlAuditListener listener = engine.auditMySql(
+            SparkSqlAuditListener listener = engine.auditSparkSql(
                     "SELECT id FROM users WHERE age > 18");
 
             assertThat(listener.getEvents()).as("应产生审计事件").isNotEmpty();
@@ -243,13 +191,13 @@ class MySqlAuditListenerTest {
         @Test
         @DisplayName("事件应包含类型和详情")
         void testEventContent() {
-            MySqlAuditListener listener = engine.auditMySql(
+            SparkSqlAuditListener listener = engine.auditSparkSql(
                     "INSERT INTO users (name) VALUES ('test')");
 
-            List<MySqlAuditListener.AuditEvent> events = listener.getEvents();
+            List<SparkSqlAuditListener.AuditEvent> events = listener.getEvents();
             assertThat(events).isNotEmpty();
 
-            MySqlAuditListener.AuditEvent firstEvent = events.get(0);
+            SparkSqlAuditListener.AuditEvent firstEvent = events.get(0);
             assertThat(firstEvent.getType()).as("事件类型不应为 null").isNotNull();
             assertThat(firstEvent.getDetail()).as("事件详情不应为 null").isNotNull();
         }
@@ -257,11 +205,21 @@ class MySqlAuditListenerTest {
         @Test
         @DisplayName("危险操作应有 DANGER 类型事件")
         void testDangerEventType() {
-            MySqlAuditListener listener = engine.auditMySql(
+            SparkSqlAuditListener listener = engine.auditSparkSql(
                     "DROP TABLE users");
 
             assertThat(listener.getEvents()).as("DROP TABLE 应产生 DANGER 类型事件")
                     .anyMatch(e -> e.getType().contains("DANGER"));
+        }
+
+        @Test
+        @DisplayName("CTE WITH 子句应产生事件")
+        void testCteEvent() {
+            SparkSqlAuditListener listener = engine.auditSparkSql(
+                    "WITH tmp AS (SELECT id FROM users) SELECT * FROM tmp");
+
+            assertThat(listener.getEvents()).as("CTE 应产生事件")
+                    .anyMatch(e -> e.getDetail().contains("CTE") || e.getDetail().contains("WITH"));
         }
     }
 
@@ -276,7 +234,7 @@ class MySqlAuditListenerTest {
         @Test
         @DisplayName("getAuditReport 不应为空")
         void testAuditReportNotEmpty() {
-            MySqlAuditListener listener = engine.auditMySql(
+            SparkSqlAuditListener listener = engine.auditSparkSql(
                     "SELECT * FROM users");
 
             String report = listener.getAuditReport();
@@ -287,8 +245,8 @@ class MySqlAuditListenerTest {
         @Test
         @DisplayName("toString 与 getAuditReport 一致")
         void testToString() {
-            MySqlAuditListener listener = engine.auditMySql(
-                    "UPDATE users SET name = 'test' WHERE id = 1");
+            SparkSqlAuditListener listener = engine.auditSparkSql(
+                    "INSERT INTO users (name) VALUES ('test')");
 
             assertThat(listener.toString()).as("toString 应与 getAuditReport 一致")
                     .isEqualTo(listener.getAuditReport());
@@ -297,7 +255,7 @@ class MySqlAuditListenerTest {
         @Test
         @DisplayName("审计报告应包含表访问信息")
         void testReportContainsTableAccess() {
-            MySqlAuditListener listener = engine.auditMySql(
+            SparkSqlAuditListener listener = engine.auditSparkSql(
                     "SELECT id FROM users");
 
             String report = listener.getAuditReport();
@@ -307,11 +265,11 @@ class MySqlAuditListenerTest {
         @Test
         @DisplayName("有告警时报告应包含告警信息")
         void testReportContainsWarnings() {
-            MySqlAuditListener listener = engine.auditMySql(
+            SparkSqlAuditListener listener = engine.auditSparkSql(
                     "DROP TABLE users");
 
             String report = listener.getAuditReport();
-            assertThat(report.toLowerCase().contains("drop") || report.contains("告警") || report.contains("警告"))
+            assertThat(report.toLowerCase().contains("drop") || report.contains("告警") || report.contains("危险"))
                     .as("审计报告应包含危险操作相关信息").isTrue();
         }
     }
@@ -327,7 +285,7 @@ class MySqlAuditListenerTest {
         @Test
         @DisplayName("复杂 JOIN 查询的审计")
         void testComplexJoinAudit() {
-            MySqlAuditListener listener = engine.auditMySql(
+            SparkSqlAuditListener listener = engine.auditSparkSql(
                     "SELECT u.name, COUNT(o.id) " +
                     "FROM users u " +
                     "INNER JOIN orders o ON u.id = o.user_id " +
@@ -341,15 +299,13 @@ class MySqlAuditListenerTest {
         }
 
         @Test
-        @DisplayName("子查询的审计")
-        void testSubQueryAudit() {
-            MySqlAuditListener listener = engine.auditMySql(
-                    "SELECT name FROM users WHERE id IN " +
-                    "(SELECT user_id FROM orders WHERE amount > " +
-                    "(SELECT AVG(amount) FROM orders))");
+        @DisplayName("SparkSQL 特有语法审计 - LEFT SEMI JOIN")
+        void testLeftSemiJoinAudit() {
+            SparkSqlAuditListener listener = engine.auditSparkSql(
+                    "SELECT u.name FROM users u LEFT SEMI JOIN orders o ON u.id = o.user_id");
 
-            assertThat(listener.getEvents()).as("应产生审计事件").isNotEmpty();
-            assertThat(listener.hasDangerousOperations()).as("子查询不应标记为危险").isFalse();
+            assertThat(listener.getEvents()).as("应产生 JOIN 相关事件")
+                    .anyMatch(e -> e.getDetail().toUpperCase().contains("JOIN"));
         }
     }
 }

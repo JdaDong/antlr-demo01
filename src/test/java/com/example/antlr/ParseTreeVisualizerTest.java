@@ -13,7 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.*;
 
 /**
  * ParseTreeVisualizer 单元测试
@@ -70,11 +70,11 @@ class ParseTreeVisualizerTest {
         void testToDot() {
             String dot = visualizer.toDot(tree);
 
-            assertNotNull(dot, "DOT 输出不应为 null");
-            assertFalse(dot.isEmpty(), "DOT 输出不应为空");
-            assertTrue(dot.startsWith("digraph"), "DOT 应以 digraph 开头");
-            assertTrue(dot.contains("->"), "DOT 应包含边（->）");
-            assertTrue(dot.endsWith("}\n"), "DOT 应以 } 结尾");
+            assertThat(dot).as("DOT 输出不应为 null").isNotNull();
+            assertThat(dot).as("DOT 输出不应为空").isNotEmpty();
+            assertThat(dot).as("DOT 应以 digraph 开头").startsWith("digraph");
+            assertThat(dot).as("DOT 应包含边（->）").contains("->");
+            assertThat(dot).as("DOT 应以 } 结尾").endsWith("}\n");
         }
 
         @Test
@@ -82,8 +82,8 @@ class ParseTreeVisualizerTest {
         void testDotContainsRuleNodes() {
             String dot = visualizer.toDot(tree);
 
-            assertTrue(dot.contains("selectStatement") || dot.contains("root"),
-                    "DOT 应包含规则节点名称");
+            assertThat(dot.contains("selectStatement") || dot.contains("root"))
+                    .as("DOT 应包含规则节点名称").isTrue();
         }
 
         @Test
@@ -91,8 +91,8 @@ class ParseTreeVisualizerTest {
         void testDotContainsTerminalNodes() {
             String dot = visualizer.toDot(tree);
 
-            assertTrue(dot.contains("SELECT") || dot.contains("FROM"),
-                    "DOT 应包含终端节点文本");
+            assertThat(dot.contains("SELECT") || dot.contains("FROM"))
+                    .as("DOT 应包含终端节点文本").isTrue();
         }
 
         @Test
@@ -100,9 +100,9 @@ class ParseTreeVisualizerTest {
         void testDotContainsColors() {
             String dot = visualizer.toDot(tree);
 
-            assertTrue(dot.contains("fillcolor"), "DOT 应包含 fillcolor 属性");
-            assertTrue(dot.contains("#CCE5FF") || dot.contains("#D4EDDA"),
-                    "DOT 应包含规则/终端节点的颜色");
+            assertThat(dot).as("DOT 应包含 fillcolor 属性").contains("fillcolor");
+            assertThat(dot.contains("#CCE5FF") || dot.contains("#D4EDDA"))
+                    .as("DOT 应包含规则/终端节点的颜色").isTrue();
         }
 
         @Test
@@ -112,10 +112,10 @@ class ParseTreeVisualizerTest {
             visualizer.toDotFile(tree, filePath);
 
             Path path = Paths.get(filePath);
-            assertTrue(Files.exists(path), "DOT 文件应已创建");
+            assertThat(Files.exists(path)).as("DOT 文件应已创建").isTrue();
             String content = Files.readString(path);
-            assertTrue(content.startsWith("digraph"), "文件内容应以 digraph 开头");
-            assertTrue(content.length() > 100, "DOT 文件应有足够内容");
+            assertThat(content).as("文件内容应以 digraph 开头").startsWith("digraph");
+            assertThat(content.length()).as("DOT 文件应有足够内容").isGreaterThan(100);
         }
     }
 
@@ -132,10 +132,10 @@ class ParseTreeVisualizerTest {
         void testToJson() {
             String json = visualizer.toJson(tree);
 
-            assertNotNull(json, "JSON 输出不应为 null");
-            assertFalse(json.isEmpty(), "JSON 输出不应为空");
-            assertTrue(json.trim().startsWith("{"), "JSON 应以 { 开头");
-            assertTrue(json.trim().endsWith("}"), "JSON 应以 } 结尾");
+            assertThat(json).as("JSON 输出不应为 null").isNotNull();
+            assertThat(json).as("JSON 输出不应为空").isNotEmpty();
+            assertThat(json.trim()).as("JSON 应以 { 开头").startsWith("{");
+            assertThat(json.trim()).as("JSON 应以 } 结尾").endsWith("}");
         }
 
         @Test
@@ -143,9 +143,9 @@ class ParseTreeVisualizerTest {
         void testJsonContainsType() {
             String json = visualizer.toJson(tree);
 
-            assertTrue(json.contains("\"type\""), "JSON 应包含 type 字段");
-            assertTrue(json.contains("\"rule\""), "JSON 应包含 rule 类型");
-            assertTrue(json.contains("\"terminal\""), "JSON 应包含 terminal 类型");
+            assertThat(json).as("JSON 应包含 type 字段").contains("\"type\"");
+            assertThat(json).as("JSON 应包含 rule 类型").contains("\"rule\"");
+            assertThat(json).as("JSON 应包含 terminal 类型").contains("\"terminal\"");
         }
 
         @Test
@@ -153,9 +153,9 @@ class ParseTreeVisualizerTest {
         void testJsonContainsRuleNames() {
             String json = visualizer.toJson(tree);
 
-            assertTrue(json.contains("\"name\""), "JSON 应包含 name 字段");
-            assertTrue(json.contains("root") || json.contains("selectStatement"),
-                    "JSON 应包含规则名称");
+            assertThat(json).as("JSON 应包含 name 字段").contains("\"name\"");
+            assertThat(json.contains("root") || json.contains("selectStatement"))
+                    .as("JSON 应包含规则名称").isTrue();
         }
 
         @Test
@@ -163,7 +163,7 @@ class ParseTreeVisualizerTest {
         void testJsonContainsTerminalText() {
             String json = visualizer.toJson(tree);
 
-            assertTrue(json.contains("\"text\""), "JSON 应包含 text 字段");
+            assertThat(json).as("JSON 应包含 text 字段").contains("\"text\"");
         }
 
         @Test
@@ -171,7 +171,7 @@ class ParseTreeVisualizerTest {
         void testJsonContainsChildren() {
             String json = visualizer.toJson(tree);
 
-            assertTrue(json.contains("\"children\""), "JSON 应包含 children 字段");
+            assertThat(json).as("JSON 应包含 children 字段").contains("\"children\"");
         }
 
         @Test
@@ -179,9 +179,9 @@ class ParseTreeVisualizerTest {
         void testJsonContainsPositionInfo() {
             String json = visualizer.toJson(tree);
 
-            assertTrue(json.contains("\"line\""), "JSON 应包含 line 字段");
-            assertTrue(json.contains("\"column\""), "JSON 应包含 column 字段");
-            assertTrue(json.contains("\"tokenType\""), "JSON 应包含 tokenType 字段");
+            assertThat(json).as("JSON 应包含 line 字段").contains("\"line\"");
+            assertThat(json).as("JSON 应包含 column 字段").contains("\"column\"");
+            assertThat(json).as("JSON 应包含 tokenType 字段").contains("\"tokenType\"");
         }
 
         @Test
@@ -191,10 +191,10 @@ class ParseTreeVisualizerTest {
             visualizer.toJsonFile(tree, filePath);
 
             Path path = Paths.get(filePath);
-            assertTrue(Files.exists(path), "JSON 文件应已创建");
+            assertThat(Files.exists(path)).as("JSON 文件应已创建").isTrue();
             String content = Files.readString(path);
-            assertTrue(content.trim().startsWith("{"), "文件内容应以 { 开头");
-            assertTrue(content.length() > 100, "JSON 文件应有足够内容");
+            assertThat(content.trim()).as("文件内容应以 { 开头").startsWith("{");
+            assertThat(content.length()).as("JSON 文件应有足够内容").isGreaterThan(100);
         }
     }
 
@@ -211,10 +211,10 @@ class ParseTreeVisualizerTest {
         void testToHtml() {
             String html = visualizer.toHtml(tree, "测试页面");
 
-            assertNotNull(html, "HTML 输出不应为 null");
-            assertFalse(html.isEmpty(), "HTML 输出不应为空");
-            assertTrue(html.contains("<!DOCTYPE html>"), "应包含 DOCTYPE 声明");
-            assertTrue(html.contains("</html>"), "应包含 HTML 闭合标签");
+            assertThat(html).as("HTML 输出不应为 null").isNotNull();
+            assertThat(html).as("HTML 输出不应为空").isNotEmpty();
+            assertThat(html).as("应包含 DOCTYPE 声明").contains("<!DOCTYPE html>");
+            assertThat(html).as("应包含 HTML 闭合标签").contains("</html>");
         }
 
         @Test
@@ -222,7 +222,7 @@ class ParseTreeVisualizerTest {
         void testHtmlContainsTitle() {
             String html = visualizer.toHtml(tree, "My Parse Tree");
 
-            assertTrue(html.contains("My Parse Tree"), "HTML 应包含自定义标题");
+            assertThat(html).as("HTML 应包含自定义标题").contains("My Parse Tree");
         }
 
         @Test
@@ -230,8 +230,8 @@ class ParseTreeVisualizerTest {
         void testHtmlContainsJsonData() {
             String html = visualizer.toHtml(tree, "测试");
 
-            assertTrue(html.contains("treeData"), "HTML 应包含嵌入的树数据");
-            assertTrue(html.contains("\"type\""), "HTML 应包含 JSON 数据结构");
+            assertThat(html).as("HTML 应包含嵌入的树数据").contains("treeData");
+            assertThat(html).as("HTML 应包含 JSON 数据结构").contains("\"type\"");
         }
 
         @Test
@@ -239,8 +239,8 @@ class ParseTreeVisualizerTest {
         void testHtmlContainsSvg() {
             String html = visualizer.toHtml(tree, "测试");
 
-            assertTrue(html.contains("<svg"), "HTML 应包含 SVG 元素");
-            assertTrue(html.contains("treeSvg"), "HTML 应包含 treeSvg");
+            assertThat(html).as("HTML 应包含 SVG 元素").contains("<svg");
+            assertThat(html).as("HTML 应包含 treeSvg").contains("treeSvg");
         }
 
         @Test
@@ -248,12 +248,12 @@ class ParseTreeVisualizerTest {
         void testHtmlContainsControls() {
             String html = visualizer.toHtml(tree, "测试");
 
-            assertTrue(html.contains("zoomIn"), "HTML 应包含放大功能");
-            assertTrue(html.contains("zoomOut"), "HTML 应包含缩小功能");
-            assertTrue(html.contains("resetView"), "HTML 应包含重置功能");
-            assertTrue(html.contains("expandAll"), "HTML 应包含全部展开功能");
-            assertTrue(html.contains("searchInput"), "HTML 应包含搜索功能");
-            assertTrue(html.contains("exportSvg"), "HTML 应包含导出 SVG 功能");
+            assertThat(html).as("HTML 应包含放大功能").contains("zoomIn");
+            assertThat(html).as("HTML 应包含缩小功能").contains("zoomOut");
+            assertThat(html).as("HTML 应包含重置功能").contains("resetView");
+            assertThat(html).as("HTML 应包含全部展开功能").contains("expandAll");
+            assertThat(html).as("HTML 应包含搜索功能").contains("searchInput");
+            assertThat(html).as("HTML 应包含导出 SVG 功能").contains("exportSvg");
         }
 
         @Test
@@ -261,7 +261,7 @@ class ParseTreeVisualizerTest {
         void testHtmlContainsMinimap() {
             String html = visualizer.toHtml(tree, "测试");
 
-            assertTrue(html.contains("minimap"), "HTML 应包含小地图");
+            assertThat(html).as("HTML 应包含小地图").contains("minimap");
         }
 
         @Test
@@ -269,7 +269,7 @@ class ParseTreeVisualizerTest {
         void testHtmlContainsTooltip() {
             String html = visualizer.toHtml(tree, "测试");
 
-            assertTrue(html.contains("tooltip"), "HTML 应包含 tooltip");
+            assertThat(html).as("HTML 应包含 tooltip").contains("tooltip");
         }
 
         @Test
@@ -277,9 +277,9 @@ class ParseTreeVisualizerTest {
         void testHtmlContainsStyles() {
             String html = visualizer.toHtml(tree, "测试");
 
-            assertTrue(html.contains("<style>"), "HTML 应包含内联样式");
-            assertTrue(html.contains("node-rule"), "HTML 应有规则节点样式");
-            assertTrue(html.contains("node-terminal"), "HTML 应有终端节点样式");
+            assertThat(html).as("HTML 应包含内联样式").contains("<style>");
+            assertThat(html).as("HTML 应有规则节点样式").contains("node-rule");
+            assertThat(html).as("HTML 应有终端节点样式").contains("node-terminal");
         }
 
         @Test
@@ -289,11 +289,11 @@ class ParseTreeVisualizerTest {
             visualizer.toHtmlFile(tree, filePath, "单元测试页面");
 
             Path path = Paths.get(filePath);
-            assertTrue(Files.exists(path), "HTML 文件应已创建");
+            assertThat(Files.exists(path)).as("HTML 文件应已创建").isTrue();
             String content = Files.readString(path);
-            assertTrue(content.contains("<!DOCTYPE html>"), "文件应包含 DOCTYPE");
-            assertTrue(content.contains("单元测试页面"), "文件应包含自定义标题");
-            assertTrue(content.length() > 1000, "HTML 文件应有足够内容");
+            assertThat(content).as("文件应包含 DOCTYPE").contains("<!DOCTYPE html>");
+            assertThat(content).as("文件应包含自定义标题").contains("单元测试页面");
+            assertThat(content.length()).as("HTML 文件应有足够内容").isGreaterThan(1000);
         }
     }
 
@@ -310,8 +310,8 @@ class ParseTreeVisualizerTest {
         void testToAsciiTree() {
             String ascii = visualizer.toAsciiTree(tree);
 
-            assertNotNull(ascii, "ASCII 输出不应为 null");
-            assertFalse(ascii.isEmpty(), "ASCII 输出不应为空");
+            assertThat(ascii).as("ASCII 输出不应为 null").isNotNull();
+            assertThat(ascii).as("ASCII 输出不应为空").isNotEmpty();
         }
 
         @Test
@@ -319,8 +319,8 @@ class ParseTreeVisualizerTest {
         void testAsciiContainsTreeChars() {
             String ascii = visualizer.toAsciiTree(tree);
 
-            assertTrue(ascii.contains("├── ") || ascii.contains("└── "),
-                    "ASCII 应包含树形连接符 ├── 或 └──");
+            assertThat(ascii.contains("├── ") || ascii.contains("└── "))
+                    .as("ASCII 应包含树形连接符 ├── 或 └──").isTrue();
         }
 
         @Test
@@ -328,7 +328,7 @@ class ParseTreeVisualizerTest {
         void testAsciiContainsRuleNames() {
             String ascii = visualizer.toAsciiTree(tree);
 
-            assertTrue(ascii.contains("root"), "ASCII 应包含 root 节点");
+            assertThat(ascii).as("ASCII 应包含 root 节点").contains("root");
         }
 
         @Test
@@ -336,8 +336,8 @@ class ParseTreeVisualizerTest {
         void testAsciiTerminalQuotes() {
             String ascii = visualizer.toAsciiTree(tree);
 
-            assertTrue(ascii.contains("'SELECT'") || ascii.contains("'FROM'"),
-                    "ASCII 终端节点应有引号包围");
+            assertThat(ascii.contains("'SELECT'") || ascii.contains("'FROM'"))
+                    .as("ASCII 终端节点应有引号包围").isTrue();
         }
 
         @Test
@@ -345,7 +345,7 @@ class ParseTreeVisualizerTest {
         void testAsciiContainsEof() {
             String ascii = visualizer.toAsciiTree(tree);
 
-            assertTrue(ascii.contains("<EOF>"), "ASCII 应包含 <EOF>");
+            assertThat(ascii).as("ASCII 应包含 <EOF>").contains("<EOF>");
         }
 
         @Test
@@ -353,9 +353,8 @@ class ParseTreeVisualizerTest {
         void testAsciiShowsChildCount() {
             String ascii = visualizer.toAsciiTree(tree);
 
-            // 规则节点后面应有 (N) 格式的子节点数量
-            assertTrue(ascii.matches("(?s).*\\(\\d+\\).*"),
-                    "ASCII 规则节点应显示子节点数量如 (2)");
+            assertThat(ascii).as("ASCII 规则节点应显示子节点数量如 (2)")
+                    .matches("(?s).*\\(\\d+\\).*");
         }
 
         @Test
@@ -364,7 +363,7 @@ class ParseTreeVisualizerTest {
             String ascii = visualizer.toAsciiTree(tree);
 
             String[] lines = ascii.split("\n");
-            assertTrue(lines.length > 10, "ASCII 应有多行输出（复杂 SQL 至少 10 行），实际: " + lines.length);
+            assertThat(lines.length).as("ASCII 应有多行输出（复杂 SQL 至少 10 行）").isGreaterThan(10);
         }
     }
 
@@ -389,10 +388,10 @@ class ParseTreeVisualizerTest {
             String ascii = engine.visualizeMySqlToAscii(
                     "SELECT id, name FROM users WHERE age > 18");
 
-            assertNotNull(ascii);
-            assertTrue(ascii.contains("root"), "应包含 root 节点");
-            assertTrue(ascii.contains("├── ") || ascii.contains("└── "),
-                    "应包含树形连接符");
+            assertThat(ascii).isNotNull();
+            assertThat(ascii).as("应包含 root 节点").contains("root");
+            assertThat(ascii.contains("├── ") || ascii.contains("└── "))
+                    .as("应包含树形连接符").isTrue();
         }
 
         @Test
@@ -402,7 +401,7 @@ class ParseTreeVisualizerTest {
             engine.visualizeMySqlToHtml(
                     "SELECT * FROM users", filePath, "Engine Test");
 
-            assertTrue(Files.exists(Paths.get(filePath)), "HTML 文件应已创建");
+            assertThat(Files.exists(Paths.get(filePath))).as("HTML 文件应已创建").isTrue();
         }
 
         @Test
@@ -412,9 +411,9 @@ class ParseTreeVisualizerTest {
             String dot = engine.visualizeMySqlToDot(
                     "SELECT * FROM users", filePath);
 
-            assertNotNull(dot);
-            assertTrue(dot.contains("digraph"), "DOT 应以 digraph 开头");
-            assertTrue(Files.exists(Paths.get(filePath)), "DOT 文件应已创建");
+            assertThat(dot).isNotNull();
+            assertThat(dot).as("DOT 应以 digraph 开头").contains("digraph");
+            assertThat(Files.exists(Paths.get(filePath))).as("DOT 文件应已创建").isTrue();
         }
 
         @Test
@@ -423,8 +422,8 @@ class ParseTreeVisualizerTest {
             String dot = engine.visualizeMySqlToDot(
                     "SELECT * FROM users", null);
 
-            assertNotNull(dot);
-            assertTrue(dot.contains("digraph"));
+            assertThat(dot).isNotNull();
+            assertThat(dot).contains("digraph");
         }
 
         @Test
@@ -434,9 +433,9 @@ class ParseTreeVisualizerTest {
             String json = engine.visualizeMySqlToJson(
                     "SELECT * FROM users", filePath);
 
-            assertNotNull(json);
-            assertTrue(json.trim().startsWith("{"), "JSON 应以 { 开头");
-            assertTrue(Files.exists(Paths.get(filePath)), "JSON 文件应已创建");
+            assertThat(json).isNotNull();
+            assertThat(json.trim()).as("JSON 应以 { 开头").startsWith("{");
+            assertThat(Files.exists(Paths.get(filePath))).as("JSON 文件应已创建").isTrue();
         }
     }
 
@@ -460,10 +459,10 @@ class ParseTreeVisualizerTest {
             ParseTree simpleTree = parser.root();
             ParseTreeVisualizer vis = new ParseTreeVisualizer(parser);
 
-            assertDoesNotThrow(() -> vis.toDot(simpleTree), "简单 SQL 的 DOT 不应抛异常");
-            assertDoesNotThrow(() -> vis.toJson(simpleTree), "简单 SQL 的 JSON 不应抛异常");
-            assertDoesNotThrow(() -> vis.toHtml(simpleTree, "test"), "简单 SQL 的 HTML 不应抛异常");
-            assertDoesNotThrow(() -> vis.toAsciiTree(simpleTree), "简单 SQL 的 ASCII 不应抛异常");
+            assertThatCode(() -> vis.toDot(simpleTree)).as("简单 SQL 的 DOT 不应抛异常").doesNotThrowAnyException();
+            assertThatCode(() -> vis.toJson(simpleTree)).as("简单 SQL 的 JSON 不应抛异常").doesNotThrowAnyException();
+            assertThatCode(() -> vis.toHtml(simpleTree, "test")).as("简单 SQL 的 HTML 不应抛异常").doesNotThrowAnyException();
+            assertThatCode(() -> vis.toAsciiTree(simpleTree)).as("简单 SQL 的 ASCII 不应抛异常").doesNotThrowAnyException();
         }
 
         @Test
@@ -488,10 +487,10 @@ class ParseTreeVisualizerTest {
             ParseTree complexTree = parser.root();
             ParseTreeVisualizer vis = new ParseTreeVisualizer(parser);
 
-            assertDoesNotThrow(() -> vis.toDot(complexTree), "复杂 SQL 的 DOT 不应抛异常");
-            assertDoesNotThrow(() -> vis.toJson(complexTree), "复杂 SQL 的 JSON 不应抛异常");
-            assertDoesNotThrow(() -> vis.toHtml(complexTree, "complex"), "复杂 SQL 的 HTML 不应抛异常");
-            assertDoesNotThrow(() -> vis.toAsciiTree(complexTree), "复杂 SQL 的 ASCII 不应抛异常");
+            assertThatCode(() -> vis.toDot(complexTree)).as("复杂 SQL 的 DOT 不应抛异常").doesNotThrowAnyException();
+            assertThatCode(() -> vis.toJson(complexTree)).as("复杂 SQL 的 JSON 不应抛异常").doesNotThrowAnyException();
+            assertThatCode(() -> vis.toHtml(complexTree, "complex")).as("复杂 SQL 的 HTML 不应抛异常").doesNotThrowAnyException();
+            assertThatCode(() -> vis.toAsciiTree(complexTree)).as("复杂 SQL 的 ASCII 不应抛异常").doesNotThrowAnyException();
         }
 
         @Test
@@ -508,8 +507,8 @@ class ParseTreeVisualizerTest {
             ParseTree ddlTree = parser.root();
             ParseTreeVisualizer vis = new ParseTreeVisualizer(parser);
 
-            assertDoesNotThrow(() -> vis.toAsciiTree(ddlTree), "DDL 的 ASCII 不应抛异常");
-            assertDoesNotThrow(() -> vis.toDot(ddlTree), "DDL 的 DOT 不应抛异常");
+            assertThatCode(() -> vis.toAsciiTree(ddlTree)).as("DDL 的 ASCII 不应抛异常").doesNotThrowAnyException();
+            assertThatCode(() -> vis.toDot(ddlTree)).as("DDL 的 DOT 不应抛异常").doesNotThrowAnyException();
         }
     }
 }
